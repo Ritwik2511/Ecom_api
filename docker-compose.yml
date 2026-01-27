@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    container_name: ecom_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      # Overriding DATABASE_URL to connect to the 'db' service defined below
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ecom?schema=public
+    depends_on:
+      - db
+    # Wait for the DB to be ready before starting (basic approach)
+    # For production, consider using a wait-for-it script
+    command: >
+      sh -c "npx prisma generate --schema prisma/schema.prisma && npm start"
+
+  db:
+    image: postgres:15-alpine
+    container_name: ecom_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ecom
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

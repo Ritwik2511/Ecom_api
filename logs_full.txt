@@ -1,0 +1,55 @@
+
+Loaded Prisma config from prisma.config.ts.
+System.Management.Automation.RemoteException
+Prisma schema loaded from prisma/schema.prisma.
+G£ˆ Generated Prisma Client (v7.3.0) to ./generated/prisma in 159ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Loaded Prisma config from prisma.config.ts.
+
+System.Management.Automation.RemoteException
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "ecom", schema "public" at "db:5432"
+
+No migration found in prisma/migrations
+
+
+No pending migrations to apply.
+
+> ecom@1.0.0 start
+> node index.js
+
+[dotenv@17.2.3] injecting env (0) from .env -- tip: G‹÷n+≈  override existing env vars with { override: true }
+Error loading Prisma Client: PrismaClientInitializationError: `PrismaClient` needs to be constructed with a non-empty, valid `PrismaClientOptions`:
+System.Management.Automation.RemoteException
+```
+new PrismaClient({
+  ...
+})
+```
+System.Management.Automation.RemoteException
+or
+System.Management.Automation.RemoteException
+```
+constructor() {
+  super({ ... });
+}
+```
+          
+    at new t (/app/generated/prisma/runtime/client.js:74:960)
+    at Object.<anonymous> (/app/index.js:8:14)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49 {
+  clientVersion: '7.3.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+G‹·n+≈  Prisma client not found. Run "npx prisma generate" to generate it.
+   Database features will be disabled until then.
+=É‹« Server is running on http://localhost:3000
+=ÉÙË Health check: http://localhost:3000/health

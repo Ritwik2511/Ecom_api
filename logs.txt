@@ -1,0 +1,19 @@
+﻿
+Γ£ö Generated Prisma Client (v7.3.0) to ./generated/prisma in 159ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+Datasource "db": PostgreSQL database "ecom", schema "public" at "db:5432"
+
+No migration found in prisma/migrations
+
+
+No pending migrations to apply.
+
+> ecom@1.0.0 start
+> node index.js
+
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+≡ƒÜÇ Server is running on http://localhost:3000
+≡ƒôè Health check: http://localhost:3000/health
