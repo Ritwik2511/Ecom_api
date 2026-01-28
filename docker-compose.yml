@@ -1,33 +1,223 @@
-services:
-  app:
-    build: .
-    container_name: ecom_backend
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-      # Overriding DATABASE_URL to connect to the 'db' service defined below
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ecom?schema=public
-    depends_on:
-      - db
-    # Wait for the DB to be ready before starting (basic approach)
-    # For production, consider using a wait-for-it script
-    command: >
-      sh -c "npx prisma generate --schema prisma/schema.prisma && npm start"
+# ============================================
+# E-COMMERCE BACKEND - DOCKER COMPOSE
+# ============================================
+# Production-ready microservices architecture
+# Features:
+# - Service isolation with Docker networks
+# - Health checks for all critical services
+# - Volume management for data persistence
+# - Environment-based configuration
+# - Security best practices (internal services not exposed)
+# ============================================
 
-  db:
+services:
+  # ==========================================
+  # DATABASE SERVICES
+  # ==========================================
+  
+  postgres:
     image: postgres:15-alpine
-    container_name: ecom_db
+    container_name: ${POSTGRES_CONTAINER_NAME:-ecom-postgres}
     restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ecom
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ecom}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Optional: Add init scripts
+      # - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    # Port exposed for local development only
+    # In production, remove this and use 'expose' instead
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    # Internal port for Docker network communication
+    expose:
+      - "5432"
+    networks:
+      - ecom-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecom}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
+  redis:
+    image: redis:7-alpine
+    container_name: ${REDIS_CONTAINER_NAME:-ecom-redis}
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    # Port exposed for local development only
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    expose:
+      - "6379"
+    networks:
+      - ecom-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ==========================================
+  # BACKEND API SERVICE
+  # ==========================================
+  
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: ${NODE_ENV:-development}
+    container_name: ${API_CONTAINER_NAME:-ecom-api}
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # Application Settings
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-3000}
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:3000}
+      
+      # Database Configuration (Docker network)
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${POSTGRES_CONTAINER_NAME:-ecom-postgres}:5432/${POSTGRES_DB:-ecom}?schema=public
+      
+      # Redis Configuration (Docker network)
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@${REDIS_CONTAINER_NAME:-ecom-redis}:6379
+      - REDIS_HOST=${REDIS_CONTAINER_NAME:-ecom-redis}
+      - REDIS_PORT=6379
+      
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY=${JWT_EXPIRY:-7d}
+      
+      # CORS Configuration
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - DEVELOPMENT_ORIGINS=${DEVELOPMENT_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      - PRODUCTION_ORIGINS=${PRODUCTION_ORIGINS:-}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # Optional: Payment Gateway
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-}
+      
+      # Optional: Email Service
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - EMAIL_FROM=${EMAIL_FROM:-noreply@ecom.local}
+    
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    
+    volumes:
+      # Live reload in development (comment out in production)
+      - ./:/app
+      - /app/node_modules
+      # Logs directory
+      - ./logs:/app/logs
+      # Prisma generated client
+      - prisma_client:/app/node_modules/.prisma
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    networks:
+      - ecom-network
+    
+    # Development: Use nodemon for hot reload
+    # Production: Use npm start
+    command: >
+      sh -c "
+        echo '🔄 Generating Prisma Client...' &&
+        npx prisma generate --schema prisma/schema.prisma &&
+        echo '🔄 Running database migrations...' &&
+        npx prisma migrate deploy --schema prisma/schema.prisma &&
+        echo '✅ Starting application...' &&
+        npm run ${NODE_ENV:-development} || npm start
+      "
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${PORT:-3000}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================
+  # OPTIONAL: ADMIN PANEL / FRONTEND
+  # ==========================================
+  # Uncomment if you have a frontend application
+  
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: ${FRONTEND_CONTAINER_NAME:-ecom-frontend}
+  #   restart: always
+  #   environment:
+  #     - NODE_ENV=${NODE_ENV:-development}
+  #     - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+  #   ports:
+  #     - "${FRONTEND_PORT:-3001}:3000"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - ecom-network
+  #   command: npm run dev
+
+  # ==========================================
+  # OPTIONAL: NGINX REVERSE PROXY
+  # ==========================================
+  # Uncomment for production deployment with SSL
+  
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: ${NGINX_CONTAINER_NAME:-ecom-nginx}
+  #   restart: always
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - ecom-network
+
+# ==========================================
+# VOLUMES
+# ==========================================
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prisma_client:
+    driver: local
+
+# ==========================================
+# NETWORKS
+# ==========================================
+networks:
+  ecom-network:
+    driver: bridge
