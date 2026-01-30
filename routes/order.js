@@ -329,12 +329,19 @@ router.post('/', async (req, res) => {
             });
         }
 
+        const subtotal = total;
+        const shippingCost = 50; // Fixed shipping cost
+        const tax = subtotal * 0.09; // 9% Tax
+        const finalTotal = subtotal + shippingCost + tax;
+
         const order = await prisma.$transaction(async (tx) => {
             // Create Order with shipping address
             const newOrder = await tx.order.create({
                 data: {
                     userId,
-                    total: total,
+                    total: finalTotal,
+                    tax: tax,
+                    shippingCost: shippingCost,
                     status: 'PENDING',
                     shippingName,
                     shippingPhone,

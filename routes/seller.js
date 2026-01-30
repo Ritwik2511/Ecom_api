@@ -1,0 +1,469 @@
+const express = require('express');
+const router = express.Router();
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const prisma = require('../prismaClient');
+const authMiddleware = require('../middleware/auth');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Seller
+ *   description: Seller management
+ */
+
+/**
+ * @swagger
+ * /sellers/enroll:
+ *   post:
+ *     summary: Enroll a new seller
+ *     description: Admin can enroll a new seller. Creates a User account (if not exists) and a Seller profile. Login credentials are sent to the seller's email.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - businessName
+ *               - businessType
+ *               - email
+ *               - phone
+ *               - ownerName
+ *               - gstNumber
+ *               - address
+ *               - domainUrl
+ *               - publicKey
+ *               - privateKey
+ *               - urlEndpoint
+ *             properties:
+ *               businessName:
+ *                 type: string
+ *               businessType:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *               ownerName:
+ *                 type: string
+ *               gstNumber:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               domainUrl:
+ *                 type: string
+ *               publicKey:
+ *                 type: string
+ *               privateKey:
+ *                 type: string
+ *               urlEndpoint:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *                 description: Optional password for the user. If not provided, a random one will be generated.
+ *     responses:
+ *       201:
+ *         description: Seller enrolled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 seller:
+ *                   $ref: '#/components/schemas/Seller'
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Missing required fields or seller already exists
+ *       401:
+ *         description: Unauthorized (Admin only)
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/enroll', authMiddleware, async (req, res) => {
+    try {
+        // Check if requester is admin
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const {
+            businessName,
+            businessType,
+            email,
+            phone,
+            ownerName,
+            gstNumber,
+            address,
+            domainUrl,
+            publicKey,
+            privateKey,
+            urlEndpoint,
+            password,
+            panCard,
+            aadharCard,
+            bankDetails
+        } = req.body;
+
+        // Validation
+        if (!businessName || !businessType || !email || !phone || !ownerName || !gstNumber || !address || !domainUrl || !publicKey || !privateKey || !urlEndpoint) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+
+        // Check if user already exists
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    { phone }
+                ]
+            }
+        });
+
+        const tempPassword = password || Math.random().toString(36).slice(-8) + "Aa1@";
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        if (!user) {
+            // Create new user
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    phone,
+                    name: ownerName,
+                    password: hashedPassword,
+                    role: 'VENDOR' // Assuming VENDOR is the role for Seller
+                }
+            });
+        } else {
+            // Update existing user role if needed
+            if (user.role !== 'VENDOR' && user.role !== 'ADMIN') {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { role: 'VENDOR' }
+                });
+            }
+            // Check if seller profile already exists
+            const existingSeller = await prisma.seller.findUnique({
+                where: { userId: user.id }
+            });
+
+            if (existingSeller) {
+                return res.status(400).json({ error: 'Seller profile already exists for this user' });
+            }
+        }
+
+        // Create Seller profile
+        const seller = await prisma.seller.create({
+            data: {
+                userId: user.id,
+                businessName,
+                businessType,
+                gstNumber,
+                address,
+                domainUrl,
+                publicKey,
+                privateKey,
+                urlEndpoint,
+                panCard,
+                aadharCard,
+                bankName: bankDetails?.bankName,
+                accountNumber: bankDetails?.accountNumber,
+                accountHolderName: bankDetails?.accountHolderName,
+                ifscCode: bankDetails?.ifscCode
+            }
+        });
+
+        // Send email with credentials
+        const sendEmail = require('../utils/emailService');
+        try {
+            if (!password) {
+                await sendEmail(
+                    email,
+                    'Welcome to E-commerce Platform - Seller Account',
+                    `Hello ${ownerName},\n\nYour seller account has been created successfully.\n\nHere are your login credentials:\nEmail: ${email}\nPassword: ${tempPassword}\n\nPlease login and change your password immediately.\n\nBest Regards,\nAdmin Team`,
+                    `<p>Hello ${ownerName},</p><p>Your seller account has been created successfully.</p><p>Here are your login credentials:</p><p><strong>Email:</strong> ${email}<br><strong>Password:</strong> ${tempPassword}</p><p>Please login and change your password immediately.</p><p>Best Regards,<br>Admin Team</p>`
+                );
+            }
+        } catch (emailError) {
+            console.error('Failed to send email:', emailError);
+            // We still want to return success for the account creation, but maybe warn about email
+        }
+
+        res.status(201).json({
+            message: 'Seller enrolled successfully. Credentials sent to email.',
+            seller,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Enroll seller error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /sellers:
+ *   get:
+ *     summary: Get all sellers
+ *     description: Retrieve a list of all enrolled sellers. Admin only.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of sellers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Seller'
+ *       403:
+ *         description: Access denied (Admin only)
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const sellers = await prisma.seller.findMany({
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                        phone: true,
+                        role: true
+                    }
+                }
+            }
+        });
+
+        res.json(sellers);
+    } catch (error) {
+        console.error('Get sellers error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/{id}:
+ *   get:
+ *     summary: Get seller details
+ *     description: Retrieve detailed information about a specific seller by their ID. Admin only.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Seller ID
+ *     responses:
+ *       200:
+ *         description: Seller details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Seller'
+ *       403:
+ *         description: Access denied (Admin only)
+ *       404:
+ *         description: Seller not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:id', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const { id } = req.params;
+
+        const seller = await prisma.seller.findUnique({
+            where: { id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                        phone: true,
+                        role: true
+                    }
+                }
+            }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller not found' });
+        }
+
+        // Mock performance metrics for now 
+        // In a real app, you would count actual products and orders
+        // const productsCount = await prisma.product.count({ where: { sellerId: seller.id } }); // Assuming product has sellerId
+        const metrics = {
+            products: 45,
+            orders: 234,
+            rating: "N/A"
+        };
+
+        res.json({ ...seller, metrics });
+    } catch (error) {
+        console.error('Get seller error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/{id}/suspend:
+ *   put:
+ *     summary: Suspend a seller
+ *     description: Suspend a seller account. Admin only.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Seller ID
+ *     responses:
+ *       200:
+ *         description: Seller suspended successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 seller:
+ *                   $ref: '#/components/schemas/Seller'
+ *       403:
+ *         description: Access denied (Admin only)
+ *       404:
+ *         description: Seller not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id/suspend', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const { id } = req.params;
+
+        const seller = await prisma.seller.findUnique({ where: { id } });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller not found' });
+        }
+
+        const updatedSeller = await prisma.seller.update({
+            where: { id },
+            data: { isSuspended: true }
+        });
+
+        res.json({
+            message: 'Seller suspended successfully',
+            seller: updatedSeller
+        });
+    } catch (error) {
+        console.error('Suspend seller error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/{id}/activate:
+ *   put:
+ *     summary: Activate a seller
+ *     description: Activate a suspended seller account. Admin only.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Seller ID
+ *     responses:
+ *       200:
+ *         description: Seller activated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 seller:
+ *                   $ref: '#/components/schemas/Seller'
+ *       403:
+ *         description: Access denied (Admin only)
+ *       404:
+ *         description: Seller not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id/activate', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const { id } = req.params;
+
+        const seller = await prisma.seller.findUnique({ where: { id } });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller not found' });
+        }
+
+        const updatedSeller = await prisma.seller.update({
+            where: { id },
+            data: { isSuspended: false }
+        });
+
+        res.json({
+            message: 'Seller activated successfully',
+            seller: updatedSeller
+        });
+    } catch (error) {
+        console.error('Activate seller error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+module.exports = router;
+

@@ -31,6 +31,8 @@ const orderRoutes = require('./routes/order');
 app.use('/api/auth', authRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/sellers', require('./routes/seller'));
+app.use('/api/admin', require('./routes/admin'));
 app.get('/api', (req, res) => {
     res.json({ message: 'API is working' });
 });
@@ -49,6 +51,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`Swagger Documentation: http://localhost:${PORT}/api-docs`);
 });
 
 // Graceful shutdown

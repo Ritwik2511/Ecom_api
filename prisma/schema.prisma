@@ -27,6 +27,7 @@ model User {
   role      Role     @default(BUYER)
   cart      Cart?
   orders    Order[]
+  seller    Seller?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -44,8 +45,10 @@ model Product {
   price       Decimal
   stock       Int
   imageUrl    String?
+  sellerStoreName String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  seller      Seller?     @relation(fields: [sellerId], references: [id])
   CartItem    CartItem[]
   OrderItem   OrderItem[]
 }
@@ -76,6 +79,8 @@ model Order {
   user         User        @relation(fields: [userId], references: [id])
   status       OrderStatus @default(PENDING)
   total        Decimal
+  tax          Decimal     @default(0)
+  shippingCost Decimal     @default(0)
   items        OrderItem[]
   
   // Shipping Address
@@ -108,4 +113,28 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+model Seller {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  businessName String
+  businessType String
+  gstNumber    String
+  address      String
+  domainUrl    String   
+  publicKey    String
+  privateKey   String
+  urlEndpoint  String
+  panCard      String?
+  aadharCard   String?
+  bankName          String?
+  accountNumber     String?
+  accountHolderName String?
+  ifscCode          String?
+  isSuspended       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  products     Product[]
 }

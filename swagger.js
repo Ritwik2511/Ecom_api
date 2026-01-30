@@ -212,6 +212,83 @@ const options = {
                             example: 'Error message'
                         }
                     }
+                },
+                Seller: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            example: 'clxSeller12345'
+                        },
+                        userId: {
+                            type: 'string',
+                            example: 'clxUser12345'
+                        },
+                        businessName: {
+                            type: 'string',
+                            example: 'Tech Solutions'
+                        },
+                        businessType: {
+                            type: 'string',
+                            example: 'Electronics'
+                        },
+                        gstNumber: {
+                            type: 'string',
+                            example: 'GSTIN12345'
+                        },
+                        address: {
+                            type: 'string',
+                            example: '123 Tech Park, Silicon Valley'
+                        },
+                        domainUrl: {
+                            type: 'string',
+                            example: 'https://techsolutions.com'
+                        },
+                        publicKey: {
+                            type: 'string',
+                            example: 'public-key-abcdef'
+                        },
+                        privateKey: {
+                            type: 'string',
+                            example: 'private-key-secret'
+                        },
+                        urlEndpoint: {
+                            type: 'string',
+                            example: 'https://api.techsolutions.com/webhook'
+                        },
+                        panCard: {
+                            type: 'string',
+                            example: 'ABCDE1234F'
+                        },
+                        aadharCard: {
+                            type: 'string',
+                            example: '123456789012'
+                        },
+                        bankName: {
+                            type: 'string',
+                            example: 'State Bank of India'
+                        },
+                        accountNumber: {
+                            type: 'string',
+                            example: '1234567890'
+                        },
+                        accountHolderName: {
+                            type: 'string',
+                            example: 'Tech Solutions'
+                        },
+                        ifscCode: {
+                            type: 'string',
+                            example: 'SBIN0001234'
+                        },
+                        isSuspended: {
+                            type: 'boolean',
+                            example: false
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time'
+                        }
+                    }
                 }
             }
         },
