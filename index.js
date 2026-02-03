@@ -52,6 +52,7 @@ app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log(`Swagger Documentation: http://localhost:${PORT}/api-docs`);
+    console.log(`Prisma Studio: http://localhost:5556`);
 });
 
 // Graceful shutdown
