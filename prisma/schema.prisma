@@ -48,6 +48,7 @@ model Product {
   sellerStoreName String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  sellerId    String?
   seller      Seller?     @relation(fields: [sellerId], references: [id])
   CartItem    CartItem[]
   OrderItem   OrderItem[]
