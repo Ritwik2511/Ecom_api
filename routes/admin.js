@@ -430,6 +430,7 @@ router.get('/products', authMiddleware, async (req, res) => {
             sellerStoreName: product.sellerStoreName
         }));
 
+
         res.json(formattedProducts);
     } catch (error) {
         console.error('Get products error:', error);
