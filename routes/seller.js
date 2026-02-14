@@ -216,6 +216,38 @@ router.post('/enroll', authMiddleware, async (req, res) => {
 
 /**
  * @swagger
+ * /sellers/categories:
+ *   get:
+ *     summary: Get all categories
+ *     description: Retrieve a list of all product categories. Accessible by Sellers.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of categories
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/categories', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Sellers and Admins only.' });
+        }
+        const categories = await prisma.category.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.json(categories);
+    } catch (error) {
+        console.error('Get categories error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
  * /sellers:
  *   get:
  *     summary: Get all sellers
@@ -260,6 +292,148 @@ router.get('/', authMiddleware, async (req, res) => {
         res.json(sellers);
     } catch (error) {
         console.error('Get sellers error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/products:
+ *   post:
+ *     summary: Add a new product
+ *     description: Sellers can add a new product.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - price
+ *               - stock
+ *               - categoryId
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stock:
+ *                 type: integer
+ *               imageUrl:
+ *                 type: string
+ *               categoryId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Product created successfully
+ *       400:
+ *         description: Missing fields or invalid category
+ *       403:
+ *         description: Access denied (Seller only)
+ *       404:
+ *         description: Seller profile not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/products', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.id }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller profile not found' });
+        }
+
+        const { name, description, price, stock, imageUrl, categoryId } = req.body;
+
+        if (!name || price === undefined || stock === undefined || !categoryId) {
+            return res.status(400).json({ error: 'Name, price, stock, and categoryId are required' });
+        }
+
+        // Verify category exists
+        const category = await prisma.category.findUnique({
+            where: { id: categoryId }
+        });
+
+        if (!category) {
+            return res.status(400).json({ error: 'Invalid categoryId. Category does not exist.' });
+        }
+
+        const product = await prisma.product.create({
+            data: {
+                name,
+                description,
+                price,
+                stock,
+                imageUrl,
+                categoryId,
+                sellerId: seller.id,
+                sellerStoreName: seller.businessName
+            }
+        });
+
+        res.status(201).json(product);
+    } catch (error) {
+        console.error('Add product error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/my-products:
+ *   get:
+ *     summary: Get products of the logged-in seller
+ *     description: Retrieve a list of products added by the current seller.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of products
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Seller profile not found
+ */
+router.get('/my-products', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.id }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller profile not found' });
+        }
+
+        const products = await prisma.product.findMany({
+            where: { sellerId: seller.id },
+            include: {
+                category: {
+                    select: { name: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(products);
+    } catch (error) {
+        console.error('Get my products error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -461,180 +635,6 @@ router.put('/:id/activate', authMiddleware, async (req, res) => {
         });
     } catch (error) {
         console.error('Activate seller error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-/**
- * @swagger
- * /sellers/categories:
- *   get:
- *     summary: Get all categories
- *     description: Retrieve a list of all product categories. Accessible by Sellers.
- *     tags: [Seller]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of categories
- *       403:
- *         description: Access denied
- *       500:
- *         description: Internal server error
- */
-router.get('/categories', authMiddleware, async (req, res) => {
-    try {
-        if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
-            return res.status(403).json({ error: 'Access denied. Sellers and Admins only.' });
-        }
-        const categories = await prisma.category.findMany({
-            orderBy: { name: 'asc' }
-        });
-        res.json(categories);
-    } catch (error) {
-        console.error('Get categories error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-/**
- * @swagger
- * /sellers/products:
- *   post:
- *     summary: Add a new product
- *     description: Sellers can add a new product.
- *     tags: [Seller]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - price
- *               - stock
- *               - categoryId
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               price:
- *                 type: number
- *               stock:
- *                 type: integer
- *               imageUrl:
- *                 type: string
- *               categoryId:
- *                 type: string
- *     responses:
- *       201:
- *         description: Product created successfully
- *       400:
- *         description: Missing fields or invalid category
- *       403:
- *         description: Access denied (Seller only)
- *       404:
- *         description: Seller profile not found
- *       500:
- *         description: Internal server error
- */
-router.post('/products', authMiddleware, async (req, res) => {
-    try {
-        if (req.user.role !== 'VENDOR') {
-            return res.status(403).json({ error: 'Access denied. Seller account required.' });
-        }
-
-        const seller = await prisma.seller.findUnique({
-            where: { userId: req.user.id }
-        });
-
-        if (!seller) {
-            return res.status(404).json({ error: 'Seller profile not found' });
-        }
-
-        const { name, description, price, stock, imageUrl, categoryId } = req.body;
-
-        if (!name || price === undefined || stock === undefined || !categoryId) {
-            return res.status(400).json({ error: 'Name, price, stock, and categoryId are required' });
-        }
-
-        // Verify category exists
-        const category = await prisma.category.findUnique({
-            where: { id: categoryId }
-        });
-
-        if (!category) {
-            return res.status(400).json({ error: 'Invalid categoryId. Category does not exist.' });
-        }
-
-        const product = await prisma.product.create({
-            data: {
-                name,
-                description,
-                price,
-                stock,
-                imageUrl,
-                categoryId,
-                sellerId: seller.id,
-                sellerStoreName: seller.businessName
-            }
-        });
-
-        res.status(201).json(product);
-    } catch (error) {
-        console.error('Add product error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-/**
- * @swagger
- * /sellers/my-products:
- *   get:
- *     summary: Get products of the logged-in seller
- *     description: Retrieve a list of products added by the current seller.
- *     tags: [Seller]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of products
- *       403:
- *         description: Access denied
- *       404:
- *         description: Seller profile not found
- */
-router.get('/my-products', authMiddleware, async (req, res) => {
-    try {
-        if (req.user.role !== 'VENDOR') {
-            return res.status(403).json({ error: 'Access denied. Seller account required.' });
-        }
-
-        const seller = await prisma.seller.findUnique({
-            where: { userId: req.user.id }
-        });
-
-        if (!seller) {
-            return res.status(404).json({ error: 'Seller profile not found' });
-        }
-
-        const products = await prisma.product.findMany({
-            where: { sellerId: seller.id },
-            include: {
-                category: {
-                    select: { name: true }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        res.json(products);
-    } catch (error) {
-        console.error('Get my products error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
