@@ -416,6 +416,12 @@ router.get('/products', authMiddleware, async (req, res) => {
                     select: {
                         businessName: true
                     }
+                },
+                category: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -426,7 +432,8 @@ router.get('/products', authMiddleware, async (req, res) => {
             name: product.name,
             price: Number(product.price),
             stock: product.stock,
-            // sellerName: product.seller?.businessName || 'Unknown Seller',
+            category: product.category ? product.category.name : 'Uncategorized',
+            categoryId: product.categoryId,
             sellerStoreName: product.sellerStoreName
         }));
 
@@ -473,6 +480,8 @@ router.get('/products', authMiddleware, async (req, res) => {
  *                 type: string
  *               sellerStoreName:
  *                 type: string
+ *               categoryId:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Product updated successfully
@@ -490,7 +499,7 @@ router.put('/products/:id', authMiddleware, async (req, res) => {
         }
 
         const { id } = req.params;
-        const { name, price, stock, description, imageUrl, sellerStoreName } = req.body;
+        const { name, price, stock, description, imageUrl, sellerStoreName, categoryId } = req.body;
 
         const product = await prisma.product.findUnique({ where: { id } });
 
@@ -506,13 +515,224 @@ router.put('/products/:id', authMiddleware, async (req, res) => {
                 stock: stock !== undefined ? stock : product.stock,
                 description: description !== undefined ? description : product.description,
                 imageUrl: imageUrl !== undefined ? imageUrl : product.imageUrl,
-                sellerStoreName: sellerStoreName !== undefined ? sellerStoreName : product.sellerStoreName
+                sellerStoreName: sellerStoreName !== undefined ? sellerStoreName : product.sellerStoreName,
+                categoryId: categoryId !== undefined ? categoryId : product.categoryId
             }
         });
 
         res.json(updatedProduct);
     } catch (error) {
         console.error('Update product error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /admin/categories:
+ *   get:
+ *     summary: Get all categories
+ *     description: Retrieve a list of all product categories. Admin only.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of categories
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/categories', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+        const categories = await prisma.category.findMany({
+            include: {
+                _count: {
+                    select: { products: true }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+        res.json(categories);
+    } catch (error) {
+        console.error('Get categories error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /admin/categories:
+ *   post:
+ *     summary: Create a new category
+ *     description: Create a new product category. Admin only.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Category created successfully
+ *       400:
+ *         description: Category already exists
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/categories', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+        const { name, description } = req.body;
+
+        const existingCategory = await prisma.category.findUnique({
+            where: { name }
+        });
+
+        if (existingCategory) {
+            return res.status(400).json({ error: 'Category already exists' });
+        }
+
+        const category = await prisma.category.create({
+            data: { name, description }
+        });
+
+        res.status(201).json(category);
+    } catch (error) {
+        console.error('Create category error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /admin/categories/{id}:
+ *   put:
+ *     summary: Update a category
+ *     description: Update category name or description. Admin only.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Category updated successfully
+ *       404:
+ *         description: Category not found
+ *       403:
+ *         description: Access denied
+ */
+router.put('/categories/:id', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+        const { id } = req.params;
+        const { name, description } = req.body;
+
+        const category = await prisma.category.findUnique({ where: { id } });
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+
+        const updatedCategory = await prisma.category.update({
+            where: { id },
+            data: {
+                name: name !== undefined ? name : category.name,
+                description: description !== undefined ? description : category.description
+            }
+        });
+
+        res.json(updatedCategory);
+    } catch (error) {
+        console.error('Update category error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /admin/categories/{id}:
+ *   delete:
+ *     summary: Delete a category
+ *     description: Delete a category. Fails if products are assigned to it. Admin only.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Category deleted successfully
+ *       400:
+ *         description: Cannot delete category with products
+ *       404:
+ *         description: Category not found
+ *       403:
+ *         description: Access denied
+ */
+router.delete('/categories/:id', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+        const { id } = req.params;
+
+        const category = await prisma.category.findUnique({
+            where: { id },
+            include: { _count: { select: { products: true } } }
+        });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+
+        if (category._count.products > 0) {
+            return res.status(400).json({ error: 'Cannot delete category with existing products. Reassign or delete products first.' });
+        }
+
+        await prisma.category.delete({ where: { id } });
+        res.json({ message: 'Category deleted successfully' });
+    } catch (error) {
+        console.error('Delete category error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

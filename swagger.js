@@ -289,6 +289,40 @@ const options = {
                             format: 'date-time'
                         }
                     }
+                },
+                Category: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            example: 'clxCategory123'
+                        },
+                        name: {
+                            type: 'string',
+                            example: 'Electronics'
+                        },
+                        description: {
+                            type: 'string',
+                            example: 'Electronic gadgets and accessories'
+                        },
+                        _count: {
+                            type: 'object',
+                            properties: {
+                                products: {
+                                    type: 'integer',
+                                    example: 15
+                                }
+                            }
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time'
+                        },
+                        updatedAt: {
+                            type: 'string',
+                            format: 'date-time'
+                        }
+                    }
                 }
             }
         },

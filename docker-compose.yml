@@ -11,10 +11,13 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/ecom?schema=public
     depends_on:
       - db
+    volumes:
+      - .:/app
+      - /app/node_modules
     # Wait for the DB to be ready before starting (basic approach)
     # For production, consider using a wait-for-it script
     command: >
-      sh -c "npx prisma generate --schema prisma/schema.prisma && npm start"
+      sh -c "npx prisma generate --schema prisma/schema.prisma && npm run dev"
 
   db:
     image: postgres:15-alpine
