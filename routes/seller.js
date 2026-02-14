@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = require('../prismaClient');
 const authMiddleware = require('../middleware/auth');
+const upload = require('../utils/upload');
 
 /**
  * @swagger
@@ -301,14 +302,14 @@ router.get('/', authMiddleware, async (req, res) => {
  * /sellers/products:
  *   post:
  *     summary: Add a new product
- *     description: Sellers can add a new product.
+ *     description: Sellers can add a new product with an image upload.
  *     tags: [Seller]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -325,8 +326,10 @@ router.get('/', authMiddleware, async (req, res) => {
  *                 type: number
  *               stock:
  *                 type: integer
- *               imageUrl:
+ *               image:
  *                 type: string
+ *                 format: binary
+ *                 description: Product image file to upload
  *               categoryId:
  *                 type: string
  *     responses:
@@ -341,23 +344,27 @@ router.get('/', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/products', authMiddleware, async (req, res) => {
+router.post('/products', authMiddleware, upload.single('image'), async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
         }
 
         const seller = await prisma.seller.findUnique({
-            where: { userId: req.user.id }
+            where: { userId: req.user.userId }
         });
 
         if (!seller) {
             return res.status(404).json({ error: 'Seller profile not found' });
         }
 
-        const { name, description, price, stock, imageUrl, categoryId } = req.body;
+        // With multer, body might be parsed as strings
+        const { name, description, categoryId } = req.body;
+        const price = parseFloat(req.body.price);
+        const stock = parseInt(req.body.stock);
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-        if (!name || price === undefined || stock === undefined || !categoryId) {
+        if (!name || isNaN(price) || isNaN(stock) || !categoryId) {
             return res.status(400).json({ error: 'Name, price, stock, and categoryId are required' });
         }
 
@@ -414,7 +421,7 @@ router.get('/my-products', authMiddleware, async (req, res) => {
         }
 
         const seller = await prisma.seller.findUnique({
-            where: { userId: req.user.id }
+            where: { userId: req.user.userId }
         });
 
         if (!seller) {
@@ -644,7 +651,7 @@ router.put('/:id/activate', authMiddleware, async (req, res) => {
  * /sellers/products/{id}:
  *   put:
  *     summary: Update a product
- *     description: Sellers can update their own product.
+ *     description: Sellers can update their own product, including uploading a new image.
  *     tags: [Seller]
  *     security:
  *       - bearerAuth: []
@@ -658,7 +665,7 @@ router.put('/:id/activate', authMiddleware, async (req, res) => {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -670,8 +677,10 @@ router.put('/:id/activate', authMiddleware, async (req, res) => {
  *                 type: number
  *               stock:
  *                 type: integer
- *               imageUrl:
+ *               image:
  *                 type: string
+ *                 format: binary
+ *                 description: New product image file
  *               categoryId:
  *                 type: string
  *     responses:
@@ -686,14 +695,14 @@ router.put('/:id/activate', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/products/:id', authMiddleware, async (req, res) => {
+router.put('/products/:id', authMiddleware, upload.single('image'), async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
         }
 
         const seller = await prisma.seller.findUnique({
-            where: { userId: req.user.id }
+            where: { userId: req.user.userId }
         });
 
         if (!seller) {
@@ -701,7 +710,10 @@ router.put('/products/:id', authMiddleware, async (req, res) => {
         }
 
         const { id } = req.params;
-        const { name, description, price, stock, imageUrl, categoryId } = req.body;
+        const { name, description, categoryId } = req.body;
+        const price = req.body.price !== undefined ? parseFloat(req.body.price) : undefined;
+        const stock = req.body.stock !== undefined ? parseInt(req.body.stock) : undefined;
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
 
         const product = await prisma.product.findUnique({
             where: { id }
@@ -772,7 +784,7 @@ router.delete('/products/:id', authMiddleware, async (req, res) => {
         }
 
         const seller = await prisma.seller.findUnique({
-            where: { userId: req.user.id }
+            where: { userId: req.user.userId }
         });
 
         if (!seller) {
