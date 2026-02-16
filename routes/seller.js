@@ -331,6 +331,10 @@ router.get('/', authMiddleware, async (req, res) => {
  *                 type: string
  *                 format: binary
  *                 description: Product image file to upload
+ *               images:
+ *                 type: string
+ *                 format: binary
+ *                 description: Product image file to upload (alternative field name)
  *               categoryId:
  *                 type: string
  *     responses:
@@ -345,8 +349,13 @@ router.get('/', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/products', authMiddleware, upload.single('image'), async (req, res) => {
+router.post('/products', authMiddleware, upload.any(), async (req, res) => {
     try {
+        console.log('=== PRODUCT CREATE REQUEST (BACKEND) ===');
+        console.log('User:', req.user);
+        console.log('Body:', req.body);
+        console.log('Files:', req.files);
+
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
         }
@@ -364,15 +373,25 @@ router.post('/products', authMiddleware, upload.single('image'), async (req, res
         const price = parseFloat(req.body.price);
         const stock = parseInt(req.body.stock);
 
+        // Handle both 'image' and 'images' field names
+        let imageFile = null;
+        if (req.files && req.files.length > 0) {
+            // Find the image file (could be named 'image' or 'images')
+            imageFile = req.files.find(f => f.fieldname === 'image' || f.fieldname === 'images');
+        }
+
         let image = null;
-        if (req.file) {
+        if (imageFile) {
             try {
-                image = await uploadToImageKit(req.file, {
+                console.log('Uploading image to ImageKit:', imageFile.originalname);
+                image = await uploadToImageKit(imageFile, {
                     publicKey: seller.publicKey,
                     privateKey: seller.privateKey,
                     urlEndpoint: seller.urlEndpoint
                 });
+                console.log('Image uploaded successfully:', image);
             } catch (uploadError) {
+                console.error('Image upload error:', uploadError);
                 return res.status(500).json({ error: 'Image upload failed', details: uploadError.message });
             }
         }
@@ -390,6 +409,8 @@ router.post('/products', authMiddleware, upload.single('image'), async (req, res
             return res.status(400).json({ error: 'Invalid categoryId. Category does not exist.' });
         }
 
+        console.log('Creating product with data:', { name, description, price, stock, image, categoryId, sellerId: seller.id });
+
         const product = await prisma.product.create({
             data: {
                 name,
@@ -403,9 +424,59 @@ router.post('/products', authMiddleware, upload.single('image'), async (req, res
             }
         });
 
+        console.log('Product created successfully:', product);
         res.status(201).json(product);
     } catch (error) {
         console.error('Add product error:', error);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/products:
+ *   get:
+ *     summary: Get products of the logged-in seller
+ *     description: Retrieve a list of products added by the current seller.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of products
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Seller profile not found
+ */
+router.get('/products', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.userId }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller profile not found' });
+        }
+
+        const products = await prisma.product.findMany({
+            where: { sellerId: seller.id },
+            include: {
+                category: {
+                    select: { name: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(products);
+    } catch (error) {
+        console.error('Get products error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -414,8 +485,8 @@ router.post('/products', authMiddleware, upload.single('image'), async (req, res
  * @swagger
  * /sellers/my-products:
  *   get:
- *     summary: Get products of the logged-in seller
- *     description: Retrieve a list of products added by the current seller.
+ *     summary: Get products of the logged-in seller (alias)
+ *     description: Retrieve a list of products added by the current seller. This is an alias for /sellers/products.
  *     tags: [Seller]
  *     security:
  *       - bearerAuth: []
