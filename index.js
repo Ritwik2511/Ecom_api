@@ -27,11 +27,13 @@ app.get('/health', (req, res) => {
 const authRoutes = require('./routes/auth');
 const cartRoutes = require('./routes/cart');
 const orderRoutes = require('./routes/order');
+const productRoutes = require('./routes/products');
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api/sellers', require('./routes/seller'));
 app.use('/api/admin', require('./routes/admin'));
 app.get('/api', (req, res) => {

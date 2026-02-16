@@ -17,7 +17,7 @@ services:
     # Wait for the DB to be ready before starting (basic approach)
     # For production, consider using a wait-for-it script
     command: >
-      sh -c "npx prisma generate --schema prisma/schema.prisma && npm run dev"
+      sh -c "npx prisma generate --schema prisma/schema.prisma && npx prisma db push && npm run dev"
 
   db:
     image: postgres:15-alpine
