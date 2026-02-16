@@ -19,6 +19,7 @@
     "cloudinary": "^1.41.3",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "imagekit": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",

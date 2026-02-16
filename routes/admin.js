@@ -331,7 +331,7 @@ router.get('/orders/:id', authMiddleware, async (req, res) => {
                 sku: item.productId.substring(0, 8).toUpperCase(), // Mock SKU from ID
                 quantity: item.quantity,
                 price: Number(item.price),
-                image: item.product.imageUrl
+                image: item.product.image
             })),
             paymentInfo: {
                 method: 'Card', // Mock method
@@ -434,6 +434,7 @@ router.get('/products', authMiddleware, async (req, res) => {
             stock: product.stock,
             category: product.category ? product.category.name : 'Uncategorized',
             categoryId: product.categoryId,
+            image: product.image,
             sellerStoreName: product.sellerStoreName
         }));
 
@@ -476,7 +477,7 @@ router.get('/products', authMiddleware, async (req, res) => {
  *                 type: integer
  *               description:
  *                 type: string
- *               imageUrl:
+ *               image:
  *                 type: string
  *               sellerStoreName:
  *                 type: string
@@ -499,7 +500,7 @@ router.put('/products/:id', authMiddleware, async (req, res) => {
         }
 
         const { id } = req.params;
-        const { name, price, stock, description, imageUrl, sellerStoreName, categoryId } = req.body;
+        const { name, price, stock, description, sellerStoreName, categoryId } = req.body;
 
         const product = await prisma.product.findUnique({ where: { id } });
 
@@ -514,7 +515,6 @@ router.put('/products/:id', authMiddleware, async (req, res) => {
                 price: price !== undefined ? price : product.price,
                 stock: stock !== undefined ? stock : product.stock,
                 description: description !== undefined ? description : product.description,
-                imageUrl: imageUrl !== undefined ? imageUrl : product.imageUrl,
                 sellerStoreName: sellerStoreName !== undefined ? sellerStoreName : product.sellerStoreName,
                 categoryId: categoryId !== undefined ? categoryId : product.categoryId
             }

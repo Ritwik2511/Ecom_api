@@ -111,6 +111,7 @@ Authorization: Bearer <your-token>
         "name": "Wireless Headphones",
         "price": 2999.99,
         "stock": 50,
+        "image": "/uploads/product-image.jpg",
         "description": "High-quality wireless headphones"
       }
     }
@@ -188,7 +189,8 @@ Authorization: Bearer <your-token>
       "quantity": 2,
       "product": {
         "name": "Wireless Headphones",
-        "price": 2999.99
+        "price": 2999.99,
+        "image": "/uploads/product-image.jpg"
       },
       "itemTotal": 5999.98
     }
@@ -308,7 +310,8 @@ Authorization: Bearer <your-token>
         "name": "Wireless Headphones",
         "price": 2999.99,
         "description": "High-quality wireless headphones",
-        "stock": 48
+        "stock": 48,
+        "image": "/uploads/product-image.jpg"
       }
     }
   ],
@@ -318,6 +321,45 @@ Authorization: Bearer <your-token>
 ```
 
 ---
+
+## Seller Management (Admin)
+**Note:** All these endpoints require Admin role.
+
+### 1. Update Seller Profile
+```http
+PUT /api/sellers/{id}
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "businessName": "New Store Name",
+  "businessType": "Electronics",
+  "gstNumber": "GST123456",
+  "address": "456 Tech Park, Bangalore",
+  "domainUrl": "https://newstore.com",
+  "publicKey": "new-public-key",
+  "privateKey": "new-private-key",
+  "urlEndpoint": "https://api.newstore.com/webhook",
+  "bankDetails": {
+    "bankName": "HDFC Bank",
+    "accountNumber": "9876543210"
+  },
+  "user": {
+    "name": "Updated Owner Name"
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Seller profile updated successfully",
+  "seller": { ... }
+}
+```
+
+---
+
 
 ## Common Error Responses
 

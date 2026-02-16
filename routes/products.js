@@ -36,7 +36,7 @@ const prisma = require('../prismaClient');
  *                     type: number
  *                   stock:
  *                     type: integer
- *                   imageUrl:
+ *                   image:
  *                     type: string
  *                   sellerStoreName:
  *                     type: string

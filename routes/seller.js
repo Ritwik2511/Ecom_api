@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../prismaClient');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../utils/upload');
+const { uploadToImageKit } = require('../utils/imagekitService');
 
 /**
  * @swagger
@@ -362,7 +363,19 @@ router.post('/products', authMiddleware, upload.single('image'), async (req, res
         const { name, description, categoryId } = req.body;
         const price = parseFloat(req.body.price);
         const stock = parseInt(req.body.stock);
-        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+        let image = null;
+        if (req.file) {
+            try {
+                image = await uploadToImageKit(req.file, {
+                    publicKey: seller.publicKey,
+                    privateKey: seller.privateKey,
+                    urlEndpoint: seller.urlEndpoint
+                });
+            } catch (uploadError) {
+                return res.status(500).json({ error: 'Image upload failed', details: uploadError.message });
+            }
+        }
 
         if (!name || isNaN(price) || isNaN(stock) || !categoryId) {
             return res.status(400).json({ error: 'Name, price, stock, and categoryId are required' });
@@ -383,7 +396,7 @@ router.post('/products', authMiddleware, upload.single('image'), async (req, res
                 description,
                 price,
                 stock,
-                imageUrl,
+                image,
                 categoryId,
                 sellerId: seller.id,
                 sellerStoreName: seller.businessName
@@ -514,6 +527,157 @@ router.get('/:id', authMiddleware, async (req, res) => {
         res.json({ ...seller, metrics });
     } catch (error) {
         console.error('Get seller error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/{id}:
+ *   put:
+ *     summary: Update seller profile
+ *     description: Admin can update seller's business details, bank details, and user account information.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Seller ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               businessName:
+ *                 type: string
+ *               businessType:
+ *                 type: string
+ *               gstNumber:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               domainUrl:
+ *                 type: string
+ *               publicKey:
+ *                 type: string
+ *               privateKey:
+ *                 type: string
+ *               urlEndpoint:
+ *                 type: string
+ *               panCard:
+ *                 type: string
+ *               aadharCard:
+ *                 type: string
+ *               bankDetails:
+ *                 type: object
+ *                 properties:
+ *                   bankName:
+ *                     type: string
+ *                   accountNumber:
+ *                     type: string
+ *                   accountHolderName:
+ *                     type: string
+ *                   ifscCode:
+ *                     type: string
+ *               user:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   phone:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Seller updated successfully
+ *       403:
+ *         description: Access denied (Admin only)
+ *       404:
+ *         description: Seller not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const { id } = req.params;
+        const {
+            businessName,
+            businessType,
+            gstNumber,
+            address,
+            domainUrl,
+            publicKey,
+            privateKey,
+            urlEndpoint,
+            panCard,
+            aadharCard,
+            bankDetails,
+            user: userData
+        } = req.body;
+
+        const seller = await prisma.seller.findUnique({
+            where: { id }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller not found' });
+        }
+
+        const updatedSeller = await prisma.seller.update({
+            where: { id },
+            data: {
+                businessName: businessName !== undefined ? businessName : undefined,
+                businessType: businessType !== undefined ? businessType : undefined,
+                gstNumber: gstNumber !== undefined ? gstNumber : undefined,
+                address: address !== undefined ? address : undefined,
+                domainUrl: domainUrl !== undefined ? domainUrl : undefined,
+                publicKey: publicKey !== undefined ? publicKey : undefined,
+                privateKey: privateKey !== undefined ? privateKey : undefined,
+                urlEndpoint: urlEndpoint !== undefined ? urlEndpoint : undefined,
+                panCard: panCard !== undefined ? panCard : undefined,
+                aadharCard: aadharCard !== undefined ? aadharCard : undefined,
+                bankName: bankDetails?.bankName !== undefined ? bankDetails.bankName : undefined,
+                accountNumber: bankDetails?.accountNumber !== undefined ? bankDetails.accountNumber : undefined,
+                accountHolderName: bankDetails?.accountHolderName !== undefined ? bankDetails.accountHolderName : undefined,
+                ifscCode: bankDetails?.ifscCode !== undefined ? bankDetails.ifscCode : undefined,
+                user: userData ? {
+                    update: {
+                        name: userData.name !== undefined ? userData.name : undefined,
+                        phone: userData.phone !== undefined ? userData.phone : undefined,
+                        email: userData.email !== undefined ? userData.email : undefined,
+                    }
+                } : undefined
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                        phone: true,
+                        role: true
+                    }
+                }
+            }
+        });
+
+        res.json({
+            message: 'Seller profile updated successfully',
+            seller: updatedSeller
+        });
+    } catch (error) {
+        console.error('Update seller error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -713,7 +877,18 @@ router.put('/products/:id', authMiddleware, upload.single('image'), async (req, 
         const { name, description, categoryId } = req.body;
         const price = req.body.price !== undefined ? parseFloat(req.body.price) : undefined;
         const stock = req.body.stock !== undefined ? parseInt(req.body.stock) : undefined;
-        const imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+        let image = undefined;
+        if (req.file) {
+            try {
+                image = await uploadToImageKit(req.file, {
+                    publicKey: seller.publicKey,
+                    privateKey: seller.privateKey,
+                    urlEndpoint: seller.urlEndpoint
+                });
+            } catch (uploadError) {
+                return res.status(500).json({ error: 'Image upload failed', details: uploadError.message });
+            }
+        }
 
         const product = await prisma.product.findUnique({
             where: { id }
@@ -739,7 +914,7 @@ router.put('/products/:id', authMiddleware, upload.single('image'), async (req, 
                 description: description !== undefined ? description : product.description,
                 price: price !== undefined ? price : product.price,
                 stock: stock !== undefined ? stock : product.stock,
-                imageUrl: imageUrl !== undefined ? imageUrl : product.imageUrl,
+                image: image !== undefined ? image : product.image,
                 categoryId: categoryId !== undefined ? categoryId : product.categoryId
             }
         });

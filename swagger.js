@@ -73,6 +73,10 @@ const options = {
                         stock: {
                             type: 'integer',
                             example: 50
+                        },
+                        image: {
+                            type: 'string',
+                            example: '/uploads/product-image.jpg'
                         }
                     }
                 },
