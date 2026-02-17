@@ -531,6 +531,218 @@ router.get('/my-products', authMiddleware, async (req, res) => {
 
 /**
  * @swagger
+ * /sellers/orders:
+ *   get:
+ *     summary: Get orders containing seller's products
+ *     description: Retrieve a list of orders that include products owned by the logged-in seller.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of orders with items
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   orderStatus:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                   customer:
+ *                     type: object
+ *                   shippingDetails:
+ *                     type: object
+ *                   items:
+ *                     type: array
+ *                   sellerSubtotal:
+ *                     type: number
+ *       403:
+ *         description: Access denied (Seller only)
+ *       404:
+ *         description: Seller profile not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/orders', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.userId }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller profile not found' });
+        }
+
+        const orders = await prisma.order.findMany({
+            where: {
+                items: {
+                    some: {
+                        product: {
+                            sellerId: seller.id
+                        }
+                    }
+                }
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                        phone: true
+                    }
+                },
+                items: {
+                    where: {
+                        product: {
+                            sellerId: seller.id
+                        }
+                    },
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                price: true,
+                                image: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Format orders for the response
+        const formattedOrders = orders.map(order => {
+            const sellerItems = order.items;
+            const sellerTotal = sellerItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+
+            return {
+                id: order.id,
+                orderStatus: order.status,
+                createdAt: order.createdAt,
+                customer: order.user,
+                shippingDetails: {
+                    name: order.shippingName,
+                    phone: order.shippingPhone,
+                    address: `${order.shippingAddressLine1}${order.shippingAddressLine2 ? ', ' + order.shippingAddressLine2 : ''}`,
+                    city: order.shippingCity,
+                    state: order.shippingState,
+                    postalCode: order.shippingPostalCode,
+                    country: order.shippingCountry
+                },
+                items: sellerItems,
+                sellerSubtotal: sellerTotal
+            };
+        });
+
+        res.json(formattedOrders);
+    } catch (error) {
+        console.error('Get seller orders error:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/orders/{orderId}/status:
+ *   put:
+ *     summary: Update order status
+ *     description: Sellers can update the status of an order that contains their products.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+ *     responses:
+ *       200:
+ *         description: Order status updated successfully
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Order or Seller not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/orders/:orderId/status', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.userId }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Seller profile not found' });
+        }
+
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        if (!['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        // Check if the order contains at least one product from this seller
+        const order = await prisma.order.findFirst({
+            where: {
+                id: orderId,
+                items: {
+                    some: {
+                        product: {
+                            sellerId: seller.id
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found or does not contain your products' });
+        }
+
+        const updatedOrder = await prisma.order.update({
+            where: { id: orderId },
+            data: { status }
+        });
+
+        res.json({ message: 'Order status updated successfully', order: updatedOrder });
+    } catch (error) {
+        console.error('Update order status error:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /sellers/{id}:
  *   get:
  *     summary: Get seller details
