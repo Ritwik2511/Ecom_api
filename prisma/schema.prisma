@@ -137,6 +137,14 @@ model Seller {
   accountHolderName String?
   ifscCode          String?
   isSuspended       Boolean  @default(false)
+  
+  // Payment Gateway Configuration
+  usePlatformPG     Boolean  @default(true)
+  pgClientId        String?
+  pgSecretKey       String?
+  pgEncryptionKey   String?
+  pgWebhookUrl      String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   products     Product[]

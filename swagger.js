@@ -288,6 +288,26 @@ const options = {
                             type: 'boolean',
                             example: false
                         },
+                        usePlatformPG: {
+                            type: 'boolean',
+                            example: true
+                        },
+                        pgClientId: {
+                            type: 'string',
+                            example: 'C153C1784DD2229984C56996B2B9EAE62377BE55E653'
+                        },
+                        pgSecretKey: {
+                            type: 'string',
+                            example: 'secret-key-xyz'
+                        },
+                        pgEncryptionKey: {
+                            type: 'string',
+                            example: 'encryption-key-123'
+                        },
+                        pgWebhookUrl: {
+                            type: 'string',
+                            example: 'https://webhook.site/...'
+                        },
                         createdAt: {
                             type: 'string',
                             format: 'date-time'

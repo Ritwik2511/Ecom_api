@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../prismaClient');
 const authMiddleware = require('../middleware/auth');
+const { getPaymentConfig } = require('../utils/paymentService');
 
 router.use(authMiddleware);
 
@@ -244,6 +245,16 @@ router.get('/checkout', async (req, res) => {
  *                 createdAt:
  *                   type: string
  *                   format: date-time
+ *                 paymentGateway:
+ *                   type: object
+ *                   properties:
+ *                     mode:
+ *                       type: string
+ *                       enum: [CUSTOM, PLATFORM]
+ *                     clientId:
+ *                       type: string
+ *                     webhookUrl:
+ *                       type: string
  *       400:
  *         description: Cart is empty or not enough stock or missing address fields
  *         content:
@@ -334,6 +345,19 @@ router.post('/', async (req, res) => {
         const tax = subtotal * 0.09; // 9% Tax
         const finalTotal = subtotal + shippingCost + tax;
 
+        // Determine Payment Configuration
+        // Logic: If all items belong to one seller, try to use their PG. 
+        // If items are from multiple sellers, default to Platform PG.
+        const sellerIds = [...new Set(cart.items.map(item => item.product.sellerId))];
+        let pgConfig = null;
+
+        if (sellerIds.length === 1 && sellerIds[0]) {
+            pgConfig = await getPaymentConfig(sellerIds[0]);
+        } else {
+            // Multi-vendor or unknown seller: use Platform PG
+            pgConfig = await getPaymentConfig(null);
+        }
+
         const order = await prisma.$transaction(async (tx) => {
             // Create Order with shipping address
             const newOrder = await tx.order.create({
@@ -372,7 +396,17 @@ router.post('/', async (req, res) => {
             return newOrder;
         });
 
-        res.status(201).json(order);
+        // Add payment session info (only return non-sensitive data to frontend)
+        res.status(201).json({
+            ...order,
+            paymentGateway: {
+                mode: pgConfig.mode,
+                clientId: pgConfig.clientId,
+                // Note: Never return secretKey or encryptionKey to the frontend!
+                // These will be used for server-to-server calls or signing requests.
+                webhookUrl: pgConfig.webhookUrl
+            }
+        });
 
     } catch (error) {
         console.error(error);

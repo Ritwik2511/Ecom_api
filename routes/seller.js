@@ -65,6 +65,17 @@ const { uploadToImageKit } = require('../utils/imagekitService');
  *                 type: string
  *               urlEndpoint:
  *                 type: string
+ *               usePlatformPG:
+ *                 type: boolean
+ *                 default: true
+ *               pgClientId:
+ *                 type: string
+ *               pgSecretKey:
+ *                 type: string
+ *               pgEncryptionKey:
+ *                 type: string
+ *               pgWebhookUrl:
+ *                 type: string
  *               password:
  *                 type: string
  *                 description: Optional password for the user. If not provided, a random one will be generated.
@@ -111,7 +122,12 @@ router.post('/enroll', authMiddleware, async (req, res) => {
             password,
             panCard,
             aadharCard,
-            bankDetails
+            bankDetails,
+            usePlatformPG,
+            pgClientId,
+            pgSecretKey,
+            pgEncryptionKey,
+            pgWebhookUrl
         } = req.body;
 
         // Validation
@@ -178,7 +194,12 @@ router.post('/enroll', authMiddleware, async (req, res) => {
                 bankName: bankDetails?.bankName,
                 accountNumber: bankDetails?.accountNumber,
                 accountHolderName: bankDetails?.accountHolderName,
-                ifscCode: bankDetails?.ifscCode
+                ifscCode: bankDetails?.ifscCode,
+                usePlatformPG: usePlatformPG !== undefined ? usePlatformPG : true,
+                pgClientId,
+                pgSecretKey,
+                pgEncryptionKey,
+                pgWebhookUrl
             }
         });
 
@@ -1268,6 +1289,109 @@ router.delete('/products/:id', authMiddleware, async (req, res) => {
         res.json({ message: 'Product deleted successfully' });
     } catch (error) {
         console.error('Delete product error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /sellers/{id}:
+ *   put:
+ *     summary: Update seller details
+ *     description: Admin can update seller profile details including payment gateway configurations.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Seller ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               businessName:
+ *                 type: string
+ *               businessType:
+ *                 type: string
+ *               gstNumber:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               domainUrl:
+ *                 type: string
+ *               publicKey:
+ *                 type: string
+ *               privateKey:
+ *                 type: string
+ *               urlEndpoint:
+ *                 type: string
+ *               usePlatformPG:
+ *                 type: boolean
+ *               pgClientId:
+ *                 type: string
+ *               pgSecretKey:
+ *                 type: string
+ *               pgEncryptionKey:
+ *                 type: string
+ *               pgWebhookUrl:
+ *                 type: string
+ *               panCard:
+ *                 type: string
+ *               aadharCard:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Seller updated successfully
+ *       403:
+ *         description: Access denied (Admin only)
+ *       404:
+ *         description: Seller not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        }
+
+        const { id } = req.params;
+        const updateData = req.body;
+
+        const seller = await prisma.seller.findUnique({ where: { id } });
+        if (!seller) return res.status(404).json({ error: 'Seller not found' });
+
+        const updatedSeller = await prisma.seller.update({
+            where: { id },
+            data: {
+                businessName: updateData.businessName !== undefined ? updateData.businessName : seller.businessName,
+                businessType: updateData.businessType !== undefined ? updateData.businessType : seller.businessType,
+                gstNumber: updateData.gstNumber !== undefined ? updateData.gstNumber : seller.gstNumber,
+                address: updateData.address !== undefined ? updateData.address : seller.address,
+                domainUrl: updateData.domainUrl !== undefined ? updateData.domainUrl : seller.domainUrl,
+                publicKey: updateData.publicKey !== undefined ? updateData.publicKey : seller.publicKey,
+                privateKey: updateData.privateKey !== undefined ? updateData.privateKey : seller.privateKey,
+                urlEndpoint: updateData.urlEndpoint !== undefined ? updateData.urlEndpoint : seller.urlEndpoint,
+                usePlatformPG: updateData.usePlatformPG !== undefined ? updateData.usePlatformPG : seller.usePlatformPG,
+                pgClientId: updateData.pgClientId !== undefined ? updateData.pgClientId : seller.pgClientId,
+                pgSecretKey: updateData.pgSecretKey !== undefined ? updateData.pgSecretKey : seller.pgSecretKey,
+                pgEncryptionKey: updateData.pgEncryptionKey !== undefined ? updateData.pgEncryptionKey : seller.pgEncryptionKey,
+                pgWebhookUrl: updateData.pgWebhookUrl !== undefined ? updateData.pgWebhookUrl : seller.pgWebhookUrl,
+                panCard: updateData.panCard !== undefined ? updateData.panCard : seller.panCard,
+                aadharCard: updateData.aadharCard !== undefined ? updateData.aadharCard : seller.aadharCard
+            }
+        });
+
+        res.json({ message: 'Seller updated successfully', seller: updatedSeller });
+    } catch (error) {
+        console.error('Update seller error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
