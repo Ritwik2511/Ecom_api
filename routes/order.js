@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../prismaClient');
-const authMiddleware = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const { getPaymentConfig } = require('../utils/paymentService');
 
-router.use(authMiddleware);
+router.use(auth);
 
 /**
  * @swagger

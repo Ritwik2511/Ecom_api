@@ -3,7 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = require('../prismaClient');
-const authMiddleware = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const upload = require('../utils/upload');
 const { uploadToImageKit } = require('../utils/imagekitService');
 
@@ -100,7 +100,7 @@ const { uploadToImageKit } = require('../utils/imagekitService');
  *       500:
  *         description: Internal server error
  */
-router.post('/enroll', authMiddleware, async (req, res) => {
+router.post('/enroll', auth, async (req, res) => {
     try {
         // Check if requester is admin
         if (req.user.role !== 'ADMIN') {
@@ -254,7 +254,7 @@ router.post('/enroll', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/categories', authMiddleware, async (req, res) => {
+router.get('/categories', auth, async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Sellers and Admins only.' });
@@ -292,7 +292,7 @@ router.get('/categories', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
@@ -370,7 +370,7 @@ router.get('/', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/products', authMiddleware, upload.any(), async (req, res) => {
+router.post('/products', auth, upload.any(), async (req, res) => {
     try {
         console.log('=== PRODUCT CREATE REQUEST (BACKEND) ===');
         console.log('User:', req.user);
@@ -471,7 +471,7 @@ router.post('/products', authMiddleware, upload.any(), async (req, res) => {
  *       404:
  *         description: Seller profile not found
  */
-router.get('/products', authMiddleware, async (req, res) => {
+router.get('/products', auth, async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -519,7 +519,7 @@ router.get('/products', authMiddleware, async (req, res) => {
  *       404:
  *         description: Seller profile not found
  */
-router.get('/my-products', authMiddleware, async (req, res) => {
+router.get('/my-products', auth, async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -590,7 +590,7 @@ router.get('/my-products', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/orders', authMiddleware, async (req, res) => {
+router.get('/orders', auth, async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -711,7 +711,7 @@ router.get('/orders', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/orders/:orderId/status', authMiddleware, async (req, res) => {
+router.put('/orders/:orderId/status', auth, async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -792,7 +792,7 @@ router.put('/orders/:orderId/status', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
@@ -908,7 +908,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
@@ -1021,7 +1021,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/:id/suspend', authMiddleware, async (req, res) => {
+router.put('/:id/suspend', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
@@ -1085,7 +1085,7 @@ router.put('/:id/suspend', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/:id/activate', authMiddleware, async (req, res) => {
+router.put('/:id/activate', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Admin only.' });
@@ -1163,7 +1163,7 @@ router.put('/:id/activate', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/products/:id', authMiddleware, upload.single('image'), async (req, res) => {
+router.put('/products/:id', auth, upload.single('image'), async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -1256,7 +1256,7 @@ router.put('/products/:id', authMiddleware, upload.single('image'), async (req, 
  *       500:
  *         description: Internal server error
  */
-router.delete('/products/:id', authMiddleware, async (req, res) => {
+router.delete('/products/:id', auth, async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -1356,7 +1356,7 @@ router.delete('/products/:id', authMiddleware, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Admin only.' });

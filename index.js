@@ -1,18 +1,46 @@
-require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const config = require('./config/config');
+const logger = require('./utils/logger');
+const errorHandler = require('./middleware/errorHandler');
+const { NotFoundError } = require('./utils/errors');
 
 // Import shared Prisma client
 let prisma = null;
 try {
     prisma = require('./prismaClient');
-    console.log('✅ Prisma client loaded successfully');
+    logger.info('✅ Prisma client loaded successfully');
 } catch (error) {
-    console.error('Error loading Prisma Client:', error);
-    console.warn('⚠️  Prisma client failed to load.');
+    logger.error('Error loading Prisma Client:', error);
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// Security Middleware
+app.use(helmet());
+app.use(cors());
+
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+});
+
+// Apply rate limiting to all requests in production
+if (config.env === 'production') {
+    app.use('/api/', limiter);
+}
+
+// Request logging middleware
+app.use((req, res, next) => {
+    logger.http(`${req.method} ${req.url}`);
+    next();
+});
 
 // Middleware
 app.use(express.json());
@@ -21,47 +49,48 @@ app.use('/uploads', express.static('uploads'));
 
 // Health check route
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Server is running', prismaConnected: prisma !== null });
+    res.json({
+        status: 'ok',
+        message: 'Server is running',
+        env: config.env,
+        prismaConnected: prisma !== null
+    });
 });
-
-const authRoutes = require('./routes/auth');
-const cartRoutes = require('./routes/cart');
-const orderRoutes = require('./routes/order');
-const productRoutes = require('./routes/products');
 
 // API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/products', productRoutes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/cart', require('./routes/cart'));
+app.use('/api/orders', require('./routes/order'));
+app.use('/api/products', require('./routes/products'));
 app.use('/api/sellers', require('./routes/seller'));
 app.use('/api/admin', require('./routes/admin'));
-app.get('/api', (req, res) => {
-    res.json({ message: 'API is working' });
-});
 
 // Swagger Documentation
 const { swaggerUi, specs } = require('./swagger');
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
+// 404 handler
+app.use((req, res, next) => {
+    next(new NotFoundError(`Route ${req.originalUrl} not found`));
 });
 
+// Centralized Error handling middleware
+app.use(errorHandler);
+
 // Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    console.log(`Swagger Documentation: http://localhost:${PORT}/api-docs`);
-    console.log(`Prisma Studio: http://localhost:5556`);
+app.listen(config.port, () => {
+    logger.info(`🚀 Server is running on http://localhost:${config.port}`);
+    logger.info(`📊 Health check: http://localhost:${config.port}/health`);
+    logger.info(`Swagger Documentation: http://localhost:${config.port}/api-docs`);
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
+    logger.info('SIGINT signal received: closing HTTP server');
     if (prisma) {
         await prisma.$disconnect();
+        logger.info('Prisma disconnected');
     }
     process.exit(0);
 });
+
