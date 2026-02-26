@@ -10,9 +10,80 @@ const { uploadToImageKit } = require('../utils/imagekitService');
 /**
  * @swagger
  * tags:
- *   name: Seller
- *   description: Seller management
+ *   - name: Seller
+ *     description: Seller management and Storefront configuration
+ *   - name: Storefront
+ *     description: Public endpoints for branded seller websites
  */
+
+/**
+ * @swagger
+ * /sellers/config:
+ *   get:
+ *     summary: Get seller configuration for storefront
+ *     description: Public endpoint to fetch branding and business info by domain or seller ID.
+ *     tags: [Storefront]
+ *     parameters:
+ *       - in: query
+ *         name: domain
+ *         schema: { type: string }
+ *         description: The domain URL of the seller site
+ *       - in: query
+ *         name: id
+ *         schema: { type: string }
+ *         description: The unique seller ID
+ *     responses:
+ *       200:
+ *         description: Seller configuration retrieved successfully
+ *       400:
+ *         description: Either domain or id must be provided
+ *       444:
+ *         description: Seller not found
+ */
+router.get('/config', async (req, res) => {
+    try {
+        const { domain, id } = req.query;
+        if (!domain && !id) {
+            return res.status(400).json({ error: 'Domain or Seller ID required' });
+        }
+
+        const seller = await prisma.seller.findFirst({
+            where: {
+                OR: [
+                    { domainUrl: domain },
+                    { id: id }
+                ]
+            },
+            select: {
+                id: true,
+                businessName: true,
+                businessType: true,
+                address: true,
+                domainUrl: true,
+                logo: true,
+                favicon: true,
+                primaryColor: true,
+                secondaryColor: true,
+                aboutUs: true,
+                supportEmail: true,
+                supportPhone: true,
+                facebookUrl: true,
+                instagramUrl: true,
+                twitterUrl: true,
+                linkedinUrl: true
+            }
+        });
+
+        if (!seller) {
+            return res.status(404).json({ error: 'Store not found' });
+        }
+
+        res.json(seller);
+    } catch (error) {
+        console.error('Get store config error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 /**
  * @swagger
@@ -76,6 +147,28 @@ const { uploadToImageKit } = require('../utils/imagekitService');
  *                 type: string
  *               pgWebhookUrl:
  *                 type: string
+ *               logo:
+ *                 type: string
+ *               favicon:
+ *                 type: string
+ *               primaryColor:
+ *                 type: string
+ *               secondaryColor:
+ *                 type: string
+ *               aboutUs:
+ *                 type: string
+ *               supportEmail:
+ *                 type: string
+ *               supportPhone:
+ *                 type: string
+ *               facebookUrl:
+ *                 type: string
+ *               instagramUrl:
+ *                 type: string
+ *               twitterUrl:
+ *                 type: string
+ *               linkedinUrl:
+ *                 type: string
  *               password:
  *                 type: string
  *                 description: Optional password for the user. If not provided, a random one will be generated.
@@ -127,7 +220,18 @@ router.post('/enroll', auth, async (req, res) => {
             pgClientId,
             pgSecretKey,
             pgEncryptionKey,
-            pgWebhookUrl
+            pgWebhookUrl,
+            logo,
+            favicon,
+            primaryColor,
+            secondaryColor,
+            aboutUs,
+            supportEmail,
+            supportPhone,
+            facebookUrl,
+            instagramUrl,
+            twitterUrl,
+            linkedinUrl
         } = req.body;
 
         // Validation
@@ -199,7 +303,18 @@ router.post('/enroll', auth, async (req, res) => {
                 pgClientId,
                 pgSecretKey,
                 pgEncryptionKey,
-                pgWebhookUrl
+                pgWebhookUrl,
+                logo,
+                favicon,
+                primaryColor: primaryColor || "#000000",
+                secondaryColor: secondaryColor || "#ffffff",
+                aboutUs,
+                supportEmail,
+                supportPhone,
+                facebookUrl,
+                instagramUrl,
+                twitterUrl,
+                linkedinUrl
             }
         });
 
@@ -236,6 +351,88 @@ router.post('/enroll', auth, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /sellers/profile:
+ *   get:
+ *     summary: Get seller's own profile
+ *     description: Retrieve the identity and branding info for the logged-in seller.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *   put:
+ *     summary: Update seller's own profile
+ *     description: Update branding and social details for the logged-in seller.
+ *     tags: [Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               logo: { type: string }
+ *               favicon: { type: string }
+ *               primaryColor: { type: string }
+ *               secondaryColor: { type: string }
+ *               aboutUs: { type: string }
+ *               supportEmail: { type: string }
+ *               supportPhone: { type: string }
+ *               facebookUrl: { type: string }
+ *               instagramUrl: { type: string }
+ *               twitterUrl: { type: string }
+ *               linkedinUrl: { type: string }
+ */
+router.get('/profile', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.userId }
+        });
+        if (!seller) return res.status(404).json({ error: 'Seller profile not found' });
+        res.json(seller);
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.put('/profile', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'VENDOR') {
+            return res.status(403).json({ error: 'Access denied. Seller account required.' });
+        }
+        const seller = await prisma.seller.findUnique({
+            where: { userId: req.user.userId }
+        });
+        if (!seller) return res.status(404).json({ error: 'Seller profile not found' });
+
+        const updatedSeller = await prisma.seller.update({
+            where: { id: seller.id },
+            data: {
+                logo: req.body.logo !== undefined ? req.body.logo : seller.logo,
+                favicon: req.body.favicon !== undefined ? req.body.favicon : seller.favicon,
+                primaryColor: req.body.primaryColor !== undefined ? req.body.primaryColor : seller.primaryColor,
+                secondaryColor: req.body.secondaryColor !== undefined ? req.body.secondaryColor : seller.secondaryColor,
+                aboutUs: req.body.aboutUs !== undefined ? req.body.aboutUs : seller.aboutUs,
+                supportEmail: req.body.supportEmail !== undefined ? req.body.supportEmail : seller.supportEmail,
+                supportPhone: req.body.supportPhone !== undefined ? req.body.supportPhone : seller.supportPhone,
+                facebookUrl: req.body.facebookUrl !== undefined ? req.body.facebookUrl : seller.facebookUrl,
+                instagramUrl: req.body.instagramUrl !== undefined ? req.body.instagramUrl : seller.instagramUrl,
+                twitterUrl: req.body.twitterUrl !== undefined ? req.body.twitterUrl : seller.twitterUrl,
+                linkedinUrl: req.body.linkedinUrl !== undefined ? req.body.linkedinUrl : seller.linkedinUrl
+            }
+        });
+        res.json({ message: 'Profile updated successfully', seller: updatedSeller });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 /**
  * @swagger
@@ -259,7 +456,28 @@ router.get('/categories', auth, async (req, res) => {
         if (req.user.role !== 'VENDOR' && req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Access denied. Sellers and Admins only.' });
         }
+
+        let where = {};
+
+        // If it's a seller, only show categories assigned to them
+        if (req.user.role === 'VENDOR') {
+            const seller = await prisma.seller.findUnique({
+                where: { userId: req.user.userId }
+            });
+
+            if (!seller) {
+                return res.status(404).json({ error: 'Seller profile not found' });
+            }
+
+            where = {
+                sellers: {
+                    some: { id: seller.id }
+                }
+            };
+        }
+
         const categories = await prisma.category.findMany({
+            where,
             orderBy: { name: 'asc' }
         });
         res.json(categories);
@@ -351,11 +569,13 @@ router.get('/', auth, async (req, res) => {
  *               image:
  *                 type: string
  *                 format: binary
- *                 description: Product image file to upload
+ *                 description: Main product image file
  *               images:
- *                 type: string
- *                 format: binary
- *                 description: Product image file to upload (alternative field name)
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Additional product image files (multiple files supported)
  *               categoryId:
  *                 type: string
  *     responses:
@@ -394,26 +614,34 @@ router.post('/products', auth, upload.any(), async (req, res) => {
         const price = parseFloat(req.body.price);
         const stock = parseInt(req.body.stock);
 
-        // Handle both 'image' and 'images' field names
-        let imageFile = null;
-        if (req.files && req.files.length > 0) {
-            // Find the image file (could be named 'image' or 'images')
-            imageFile = req.files.find(f => f.fieldname === 'image' || f.fieldname === 'images');
-        }
+        // Handle multiple image uploads
+        let mainImage = null;
+        let imageGallery = [];
 
-        let image = null;
-        if (imageFile) {
-            try {
-                console.log('Uploading image to ImageKit:', imageFile.originalname);
-                image = await uploadToImageKit(imageFile, {
-                    publicKey: seller.publicKey,
-                    privateKey: seller.privateKey,
-                    urlEndpoint: seller.urlEndpoint
-                });
-                console.log('Image uploaded successfully:', image);
-            } catch (uploadError) {
-                console.error('Image upload error:', uploadError);
-                return res.status(500).json({ error: 'Image upload failed', details: uploadError.message });
+        if (req.files && req.files.length > 0) {
+            console.log(`Processing ${req.files.length} images...`);
+
+            for (const file of req.files) {
+                try {
+                    console.log('Uploading image to ImageKit:', file.originalname);
+                    const uploadedImage = await uploadToImageKit(file, {
+                        publicKey: seller.publicKey,
+                        privateKey: seller.privateKey,
+                        urlEndpoint: seller.urlEndpoint
+                    });
+
+                    imageGallery.push(uploadedImage);
+
+                    // Set the first image as the main image if not already set
+                    // Or if fieldname is 'image' (legacy/specific)
+                    if (!mainImage || file.fieldname === 'image') {
+                        mainImage = uploadedImage;
+                    }
+                } catch (uploadError) {
+                    console.error(`Failed to upload image ${file.originalname}:`, uploadError);
+                    // Continue with other images if one fails, or return error?
+                    // For now, let's just log and continue
+                }
             }
         }
 
@@ -421,16 +649,21 @@ router.post('/products', auth, upload.any(), async (req, res) => {
             return res.status(400).json({ error: 'Name, price, stock, and categoryId are required' });
         }
 
-        // Verify category exists
-        const category = await prisma.category.findUnique({
-            where: { id: categoryId }
+        // Verify category exists and is assigned to this seller
+        const category = await prisma.category.findFirst({
+            where: {
+                id: categoryId,
+                sellers: {
+                    some: { id: seller.id }
+                }
+            }
         });
 
         if (!category) {
-            return res.status(400).json({ error: 'Invalid categoryId. Category does not exist.' });
+            return res.status(403).json({ error: 'Invalid categoryId. This category is not assigned to your account or does not exist.' });
         }
 
-        console.log('Creating product with data:', { name, description, price, stock, image, categoryId, sellerId: seller.id });
+        console.log('Creating product with data:', { name, description, price, stock, image: mainImage, images: imageGallery, categoryId, sellerId: seller.id });
 
         const product = await prisma.product.create({
             data: {
@@ -438,7 +671,8 @@ router.post('/products', auth, upload.any(), async (req, res) => {
                 description,
                 price,
                 stock,
-                image,
+                image: mainImage,
+                images: imageGallery,
                 categoryId,
                 sellerId: seller.id,
                 sellerStoreName: seller.businessName
@@ -1163,7 +1397,7 @@ router.put('/:id/activate', auth, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.put('/products/:id', auth, upload.single('image'), async (req, res) => {
+router.put('/products/:id', auth, upload.any(), async (req, res) => {
     try {
         if (req.user.role !== 'VENDOR') {
             return res.status(403).json({ error: 'Access denied. Seller account required.' });
@@ -1181,18 +1415,6 @@ router.put('/products/:id', auth, upload.single('image'), async (req, res) => {
         const { name, description, categoryId } = req.body;
         const price = req.body.price !== undefined ? parseFloat(req.body.price) : undefined;
         const stock = req.body.stock !== undefined ? parseInt(req.body.stock) : undefined;
-        let image = undefined;
-        if (req.file) {
-            try {
-                image = await uploadToImageKit(req.file, {
-                    publicKey: seller.publicKey,
-                    privateKey: seller.privateKey,
-                    urlEndpoint: seller.urlEndpoint
-                });
-            } catch (uploadError) {
-                return res.status(500).json({ error: 'Image upload failed', details: uploadError.message });
-            }
-        }
 
         const product = await prisma.product.findUnique({
             where: { id }
@@ -1206,9 +1428,44 @@ router.put('/products/:id', auth, upload.single('image'), async (req, res) => {
             return res.status(403).json({ error: 'Access denied. You can only update your own products.' });
         }
 
+        // Handle multiple image uploads
+        let mainImage = product.image;
+        let newImageGallery = [...(product.images || [])];
+
+        if (req.files && req.files.length > 0) {
+            console.log(`Processing ${req.files.length} new images for update...`);
+
+            for (const file of req.files) {
+                try {
+                    console.log('Uploading image to ImageKit:', file.originalname);
+                    const uploadedImage = await uploadToImageKit(file, {
+                        publicKey: seller.publicKey,
+                        privateKey: seller.privateKey,
+                        urlEndpoint: seller.urlEndpoint
+                    });
+
+                    newImageGallery.push(uploadedImage);
+
+                    // Update main image if explicitly provided as 'image' or if it was null
+                    if (file.fieldname === 'image' || !mainImage) {
+                        mainImage = uploadedImage;
+                    }
+                } catch (uploadError) {
+                    console.error(`Failed to upload image ${file.originalname}:`, uploadError);
+                }
+            }
+        }
+
         if (categoryId) {
-            const category = await prisma.category.findUnique({ where: { id: categoryId } });
-            if (!category) return res.status(400).json({ error: 'Invalid categoryId' });
+            const category = await prisma.category.findFirst({
+                where: {
+                    id: categoryId,
+                    sellers: {
+                        some: { id: seller.id }
+                    }
+                }
+            });
+            if (!category) return res.status(403).json({ error: 'Invalid categoryId. This category is not assigned to your account or does not exist.' });
         }
 
         const updatedProduct = await prisma.product.update({
@@ -1218,7 +1475,8 @@ router.put('/products/:id', auth, upload.single('image'), async (req, res) => {
                 description: description !== undefined ? description : product.description,
                 price: price !== undefined ? price : product.price,
                 stock: stock !== undefined ? stock : product.stock,
-                image: image !== undefined ? image : product.image,
+                image: mainImage,
+                images: newImageGallery,
                 categoryId: categoryId !== undefined ? categoryId : product.categoryId
             }
         });
@@ -1342,6 +1600,28 @@ router.delete('/products/:id', auth, async (req, res) => {
  *                 type: string
  *               pgWebhookUrl:
  *                 type: string
+ *               logo:
+ *                 type: string
+ *               favicon:
+ *                 type: string
+ *               primaryColor:
+ *                 type: string
+ *               secondaryColor:
+ *                 type: string
+ *               aboutUs:
+ *                 type: string
+ *               supportEmail:
+ *                 type: string
+ *               supportPhone:
+ *                 type: string
+ *               facebookUrl:
+ *                 type: string
+ *               instagramUrl:
+ *                 type: string
+ *               twitterUrl:
+ *                 type: string
+ *               linkedinUrl:
+ *                 type: string
  *               panCard:
  *                 type: string
  *               aadharCard:
@@ -1355,7 +1635,7 @@ router.delete('/products/:id', auth, async (req, res) => {
  *         description: Seller not found
  *       500:
  *         description: Internal server error
- */
+ * */
 router.put('/:id', auth, async (req, res) => {
     try {
         if (req.user.role !== 'ADMIN') {
@@ -1384,6 +1664,17 @@ router.put('/:id', auth, async (req, res) => {
                 pgSecretKey: updateData.pgSecretKey !== undefined ? updateData.pgSecretKey : seller.pgSecretKey,
                 pgEncryptionKey: updateData.pgEncryptionKey !== undefined ? updateData.pgEncryptionKey : seller.pgEncryptionKey,
                 pgWebhookUrl: updateData.pgWebhookUrl !== undefined ? updateData.pgWebhookUrl : seller.pgWebhookUrl,
+                logo: updateData.logo !== undefined ? updateData.logo : seller.logo,
+                favicon: updateData.favicon !== undefined ? updateData.favicon : seller.favicon,
+                primaryColor: updateData.primaryColor !== undefined ? updateData.primaryColor : seller.primaryColor,
+                secondaryColor: updateData.secondaryColor !== undefined ? updateData.secondaryColor : seller.secondaryColor,
+                aboutUs: updateData.aboutUs !== undefined ? updateData.aboutUs : seller.aboutUs,
+                supportEmail: updateData.supportEmail !== undefined ? updateData.supportEmail : seller.supportEmail,
+                supportPhone: updateData.supportPhone !== undefined ? updateData.supportPhone : seller.supportPhone,
+                facebookUrl: updateData.facebookUrl !== undefined ? updateData.facebookUrl : seller.facebookUrl,
+                instagramUrl: updateData.instagramUrl !== undefined ? updateData.instagramUrl : seller.instagramUrl,
+                twitterUrl: updateData.twitterUrl !== undefined ? updateData.twitterUrl : seller.twitterUrl,
+                linkedinUrl: updateData.linkedinUrl !== undefined ? updateData.linkedinUrl : seller.linkedinUrl,
                 panCard: updateData.panCard !== undefined ? updateData.panCard : seller.panCard,
                 aadharCard: updateData.aadharCard !== undefined ? updateData.aadharCard : seller.aadharCard
             }

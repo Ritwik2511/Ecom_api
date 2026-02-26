@@ -147,8 +147,82 @@ const getOrderDetails = async (id) => {
     };
 };
 
+const getAllCategories = async () => {
+    return prisma.category.findMany({
+        include: {
+            sellers: {
+                select: {
+                    id: true,
+                    businessName: true,
+                },
+            },
+            _count: {
+                select: { products: true },
+            },
+        },
+        orderBy: { name: 'asc' },
+    });
+};
+
+const createCategory = async (data) => {
+    const { name, description, sellerIds } = data;
+
+    return prisma.category.create({
+        data: {
+            name,
+            description,
+            sellers: {
+                connect: sellerIds ? sellerIds.map(id => ({ id })) : [],
+            },
+        },
+        include: {
+            sellers: {
+                select: {
+                    id: true,
+                    businessName: true,
+                },
+            },
+        },
+    });
+};
+
+const updateCategory = async (id, data) => {
+    const { name, description, sellerIds } = data;
+
+    // First, disconnect all sellers to replace with new set
+    // In Prisma many-to-many, we can use 'set' to replace
+    return prisma.category.update({
+        where: { id },
+        data: {
+            name,
+            description,
+            sellers: {
+                set: sellerIds ? sellerIds.map(id => ({ id })) : [],
+            },
+        },
+        include: {
+            sellers: {
+                select: {
+                    id: true,
+                    businessName: true,
+                },
+            },
+        },
+    });
+};
+
+const deleteCategory = async (id) => {
+    return prisma.category.delete({
+        where: { id },
+    });
+};
+
 module.exports = {
     getAllCustomers,
     getAllOrders,
     getOrderDetails,
+    getAllCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
 };

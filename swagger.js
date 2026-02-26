@@ -308,6 +308,51 @@ const options = {
                             type: 'string',
                             example: 'https://webhook.site/...'
                         },
+                        logo: {
+                            type: 'string',
+                            example: 'https://ik.imagekit.io/yourstore/logo.png'
+                        },
+                        favicon: {
+                            type: 'string',
+                            example: 'https://ik.imagekit.io/yourstore/favicon.ico'
+                        },
+                        primaryColor: {
+                            type: 'string',
+                            example: '#000000'
+                        },
+                        secondaryColor: {
+                            type: 'string',
+                            example: '#ffffff'
+                        },
+                        aboutUs: {
+                            type: 'string',
+                            example: 'We are a leading tech retailer...'
+                        },
+                        supportEmail: {
+                            type: 'string',
+                            format: 'email',
+                            example: 'support@techsolutions.com'
+                        },
+                        supportPhone: {
+                            type: 'string',
+                            example: '+91 9999988888'
+                        },
+                        facebookUrl: {
+                            type: 'string',
+                            example: 'https://facebook.com/techsolutions'
+                        },
+                        instagramUrl: {
+                            type: 'string',
+                            example: 'https://instagram.com/techsolutions'
+                        },
+                        twitterUrl: {
+                            type: 'string',
+                            example: 'https://twitter.com/techsolutions'
+                        },
+                        linkedinUrl: {
+                            type: 'string',
+                            example: 'https://linkedin.com/company/techsolutions'
+                        },
                         createdAt: {
                             type: 'string',
                             format: 'date-time'

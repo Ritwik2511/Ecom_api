@@ -23,13 +23,29 @@ const getAllProducts = async (filters = {}) => {
 };
 
 const getProductById = async (id) => {
-    return prisma.product.findUnique({
+    const product = await prisma.product.findUnique({
         where: { id },
         include: {
-            category: { select: { name: true } },
-            seller: { select: { businessName: true } },
+            category: { select: { id: true, name: true } },
+            seller: { select: { id: true, businessName: true } },
         },
     });
+
+    if (product && product.categoryId) {
+        const relatedProducts = await prisma.product.findMany({
+            where: {
+                categoryId: product.categoryId,
+                NOT: { id: product.id },
+            },
+            take: 4,
+            include: {
+                category: { select: { name: true } },
+            },
+        });
+        return { ...product, relatedProducts };
+    }
+
+    return product;
 };
 
 module.exports = {
