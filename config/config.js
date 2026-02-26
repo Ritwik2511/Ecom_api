@@ -2,7 +2,12 @@ const dotenv = require('dotenv');
 const { z } = require('zod');
 const path = require('path');
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// Load environment variables from .env file if it exists
+const result = dotenv.config({ path: path.join(__dirname, '../.env') });
+
+if (result.error && process.env.NODE_ENV !== 'production') {
+    console.warn('⚠️ No .env file found. Relying on system environment variables.');
+}
 
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -15,7 +20,7 @@ const envSchema = z.object({
 const envVars = envSchema.safeParse(process.env);
 
 if (!envVars.success) {
-    console.error('❌ Invalid environment variables:', envVars.error.format());
+    console.error('❌ Invalid environment variables:', JSON.stringify(envVars.error.format(), null, 2));
     process.exit(1);
 }
 
