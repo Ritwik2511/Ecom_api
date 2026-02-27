@@ -610,7 +610,7 @@ router.post('/products', auth, upload.any(), async (req, res) => {
         }
 
         // With multer, body might be parsed as strings
-        const { name, description, categoryId } = req.body;
+        const { name, description, categoryId, dietaryPreference } = req.body;
         const price = parseFloat(req.body.price);
         const stock = parseInt(req.body.stock);
 
@@ -674,6 +674,7 @@ router.post('/products', auth, upload.any(), async (req, res) => {
                 image: mainImage,
                 images: imageGallery,
                 categoryId,
+                dietaryPreference: dietaryPreference || 'VEG',
                 sellerId: seller.id,
                 sellerStoreName: seller.businessName
             }
@@ -934,7 +935,7 @@ router.get('/orders', auth, async (req, res) => {
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+ *                 enum: [PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED]
  *     responses:
  *       200:
  *         description: Order status updated successfully
@@ -962,7 +963,7 @@ router.put('/orders/:orderId/status', auth, async (req, res) => {
         const { orderId } = req.params;
         const { status } = req.body;
 
-        if (!['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(status)) {
+        if (!['PENDING', 'PROCESS', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
@@ -1412,7 +1413,7 @@ router.put('/products/:id', auth, upload.any(), async (req, res) => {
         }
 
         const { id } = req.params;
-        const { name, description, categoryId } = req.body;
+        const { name, description, categoryId, dietaryPreference } = req.body;
         const price = req.body.price !== undefined ? parseFloat(req.body.price) : undefined;
         const stock = req.body.stock !== undefined ? parseInt(req.body.stock) : undefined;
 
@@ -1477,7 +1478,8 @@ router.put('/products/:id', auth, upload.any(), async (req, res) => {
                 stock: stock !== undefined ? stock : product.stock,
                 image: mainImage,
                 images: newImageGallery,
-                categoryId: categoryId !== undefined ? categoryId : product.categoryId
+                categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+                dietaryPreference: dietaryPreference !== undefined ? dietaryPreference : product.dietaryPreference
             }
         });
 

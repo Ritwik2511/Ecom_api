@@ -38,6 +38,11 @@ enum Role {
   BUYER
 }
 
+enum DietaryPreference {
+  VEG
+  NON_VEG
+}
+
 model Product {
   id          String      @id @default(cuid())
   name        String
@@ -47,6 +52,7 @@ model Product {
   image       String?
   images      String[]    @default([])
   sellerStoreName String?
+  dietaryPreference DietaryPreference @default(VEG)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   sellerId    String?
@@ -113,7 +119,7 @@ model OrderItem {
 
 enum OrderStatus {
   PENDING
-  PAID
+  PROCESS
   SHIPPED
   DELIVERED
   CANCELLED

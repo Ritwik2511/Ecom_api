@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ecom-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # Set this to true if you want to link to a Render DB managed in this file
+      - key: JWT_SECRET
+        generateValue: true
+      - key: LOG_LEVEL
+        value: info
+      - key: PORT
+        value: 3000

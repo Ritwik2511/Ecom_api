@@ -202,7 +202,7 @@ router.get('/checkout', async (req, res) => {
  *                   example: 5999.98
  *                 status:
  *                   type: string
- *                   enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+ *                   enum: [PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED]
  *                   example: "PENDING"
  *                 shippingName:
  *                   type: string
@@ -428,7 +428,7 @@ router.post('/', async (req, res) => {
  *         name: status
  *         schema:
  *           type: string
- *           enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+ *           enum: [PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED]
  *         description: Filter orders by status
  *         example: "PENDING"
  *       - in: query
@@ -469,7 +469,7 @@ router.post('/', async (req, res) => {
  *                     example: 5999.98
  *                   status:
  *                     type: string
- *                     enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+ *                     enum: [PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED]
  *                     example: "PENDING"
  *                   shippingName:
  *                     type: string
@@ -600,7 +600,7 @@ router.get('/', async (req, res) => {
  *                   example: 5999.98
  *                 status:
  *                   type: string
- *                   enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+ *                   enum: [PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED]
  *                   example: "PENDING"
  *                 shippingName:
  *                   type: string
