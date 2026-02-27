@@ -21,7 +21,7 @@ services:
       - /app/node_modules
     # Use nodemon in development, but the base image defaults to 'npm start'
     command: >
-      sh -c "npx prisma generate && npx prisma db push && npx prisma db seed && npm run dev"
+      sh -c "npx prisma generate && npx prisma db push --accept-data-loss && npx prisma db seed && npm run dev"
 
   db:
     image: postgres:15-alpine

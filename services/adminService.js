@@ -74,7 +74,7 @@ const getAllOrders = async () => {
             vendor: vendorName,
             date: order.createdAt,
             total: Number(order.total),
-            paymentStatus: order.status === 'PAID' ? 'Paid' : 'Pending',
+            paymentStatus: order.status === 'PROCESS' ? 'Paid' : 'Pending',
             status: order.status,
         };
     });

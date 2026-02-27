@@ -251,7 +251,7 @@ Authorization: Bearer <your-token>
 ```
 
 **Query Parameters:**
-- `status` (optional) - Filter by status: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+- `status` (optional) - Filter by status: PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED
 - `limit` (optional) - Number of orders to return (default: 10, max: 100)
 - `page` (optional) - Page number (default: 1)
 
@@ -395,7 +395,7 @@ Content-Type: application/json
 
 ## Order Status Values
 - `PENDING` - Order created, awaiting processing
-- `PROCESSING` - Order is being prepared
+- `PROCESS` - Order is being prepared
 - `SHIPPED` - Order has been shipped
 - `DELIVERED` - Order has been delivered
 - `CANCELLED` - Order has been cancelled

@@ -141,7 +141,7 @@ Updated 4 endpoints with comprehensive documentation:
 - **Security:** Requires Bearer token authentication
 - **Description:** Retrieve all orders for the authenticated user with optional filtering and pagination
 - **Query Parameters:**
-  - `status` (optional) - Filter by order status (PENDING/PROCESSING/SHIPPED/DELIVERED/CANCELLED)
+  - `status` (optional) - Filter by order status (PENDING/PROCESS/SHIPPED/DELIVERED/CANCELLED)
   - `limit` (optional) - Number of orders to return (default: 10, max: 100)
   - `page` (optional) - Page number for pagination (default: 1)
 - **Response Codes:**

@@ -578,6 +578,10 @@ router.get('/', auth, async (req, res) => {
  *                 description: Additional product image files (multiple files supported)
  *               categoryId:
  *                 type: string
+ *               dietaryPreference:
+ *                 type: string
+ *                 enum: ['VEG', 'NON_VEG']
+ *                 default: 'VEG'
  *     responses:
  *       201:
  *         description: Product created successfully
@@ -935,7 +939,7 @@ router.get('/orders', auth, async (req, res) => {
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [PENDING, PROCESS, SHIPPED, DELIVERED, CANCELLED]
+ *                 enum: ['PENDING', 'PROCESS', 'SHIPPED', 'DELIVERED', 'CANCELLED']
  *     responses:
  *       200:
  *         description: Order status updated successfully

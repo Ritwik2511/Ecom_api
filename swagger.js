@@ -77,6 +77,11 @@ const options = {
                         image: {
                             type: 'string',
                             example: '/uploads/product-image.jpg'
+                        },
+                        dietaryPreference: {
+                            type: 'string',
+                            enum: ['VEG', 'NON_VEG'],
+                            example: 'VEG'
                         }
                     }
                 },
@@ -156,7 +161,7 @@ const options = {
                         },
                         status: {
                             type: 'string',
-                            enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+                            enum: ['PENDING', 'PROCESS', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
                             example: 'PENDING'
                         },
                         shippingName: {
