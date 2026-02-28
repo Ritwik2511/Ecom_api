@@ -11,6 +11,28 @@ const productController = require('../controllers/productController');
 
 /**
  * @swagger
+ * /products/categories:
+ *   get:
+ *     summary: Get all categories for public display
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: List of categories with images and colors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Category'
+ */
+router.get('/categories', productController.getCategories);
+
+/**
+ * @swagger
  * /products:
  *   get:
  *     summary: Get all products

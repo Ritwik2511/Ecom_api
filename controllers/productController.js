@@ -15,7 +15,13 @@ const getProduct = asyncHandler(async (req, res) => {
     res.json({ success: true, data: product });
 });
 
+const getCategories = asyncHandler(async (req, res) => {
+    const categories = await productService.getCategories();
+    res.json({ success: true, data: categories });
+});
+
 module.exports = {
     getProducts,
     getProduct,
+    getCategories,
 };

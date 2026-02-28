@@ -82,6 +82,16 @@ const options = {
                             type: 'string',
                             enum: ['VEG', 'NON_VEG'],
                             example: 'VEG'
+                        },
+                        details: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    label: { type: 'string', example: 'Ingredients' },
+                                    value: { type: 'string', example: 'Flour, Sugar, Butter, Cocoa' }
+                                }
+                            }
                         }
                     }
                 },
@@ -373,11 +383,27 @@ const options = {
                         },
                         name: {
                             type: 'string',
-                            example: 'Electronics'
+                            example: 'Cakes'
+                        },
+                        slug: {
+                            type: 'string',
+                            example: 'cakes'
                         },
                         description: {
                             type: 'string',
-                            example: 'Electronic gadgets and accessories'
+                            example: 'Delicious freshly baked cakes'
+                        },
+                        image: {
+                            type: 'string',
+                            example: 'https://ik.imagekit.io/..."'
+                        },
+                        backgroundColor: {
+                            type: 'string',
+                            example: '#e4d0ce'
+                        },
+                        isActive: {
+                            type: 'boolean',
+                            example: true
                         },
                         _count: {
                             type: 'object',

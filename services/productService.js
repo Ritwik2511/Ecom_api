@@ -48,7 +48,15 @@ const getProductById = async (id) => {
     return product;
 };
 
+const getCategories = async () => {
+    return prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+    });
+};
+
 module.exports = {
     getAllProducts,
     getProductById,
+    getCategories,
 };

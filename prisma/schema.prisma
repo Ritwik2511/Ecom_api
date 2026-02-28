@@ -53,6 +53,7 @@ model Product {
   images      String[]    @default([])
   sellerStoreName String?
   dietaryPreference DietaryPreference @default(VEG)
+  details     Json?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   sellerId    String?
@@ -173,11 +174,15 @@ model Seller {
 
 model Category {
   id          String    @id @default(cuid())
-  name        String    @unique
-  description String?
-  products    Product[]
-  sellers     Seller[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  name            String    @unique
+  slug            String    @unique
+  description     String?
+  image           String?
+  backgroundColor String?
+  isActive        Boolean   @default(true)
+  products        Product[]
+  sellers         Seller[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 

@@ -83,6 +83,8 @@ router.get('/orders/:id', adminController.getOrderDetails);
 *             properties:
 *               name: { type: string }
 *               description: { type: string }
+*               image: { type: string }
+*               backgroundColor: { type: string }
 *               sellerIds: { type: array, items: { type: string }, description: "List of Seller IDs to assign this category to" }
 */
 router.get('/categories', adminController.getCategories);
@@ -110,6 +112,8 @@ router.post('/categories', adminController.createCategory);
  *             properties:
  *               name: { type: string }
  *               description: { type: string }
+ *               image: { type: string }
+ *               backgroundColor: { type: string }
  *               sellerIds: { type: array, items: { type: string }, description: "List of Seller IDs to assign this category to (replaces previous)" }
  *   delete:
  *     summary: Delete a category

@@ -165,12 +165,16 @@ const getAllCategories = async () => {
 };
 
 const createCategory = async (data) => {
-    const { name, description, sellerIds } = data;
+    const { name, description, image, backgroundColor, sellerIds } = data;
+    const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
     return prisma.category.create({
         data: {
             name,
+            slug,
             description,
+            image,
+            backgroundColor,
             sellers: {
                 connect: sellerIds ? sellerIds.map(id => ({ id })) : [],
             },
@@ -187,7 +191,8 @@ const createCategory = async (data) => {
 };
 
 const updateCategory = async (id, data) => {
-    const { name, description, sellerIds } = data;
+    const { name, description, image, backgroundColor, sellerIds } = data;
+    const slug = name ? name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') : undefined;
 
     // First, disconnect all sellers to replace with new set
     // In Prisma many-to-many, we can use 'set' to replace
@@ -195,7 +200,10 @@ const updateCategory = async (id, data) => {
         where: { id },
         data: {
             name,
+            slug,
             description,
+            image,
+            backgroundColor,
             sellers: {
                 set: sellerIds ? sellerIds.map(id => ({ id })) : [],
             },

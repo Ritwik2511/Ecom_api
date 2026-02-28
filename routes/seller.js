@@ -615,6 +615,16 @@ router.post('/products', auth, upload.any(), async (req, res) => {
 
         // With multer, body might be parsed as strings
         const { name, description, categoryId, dietaryPreference } = req.body;
+        let details = req.body.details;
+
+        if (details && typeof details === 'string') {
+            try {
+                details = JSON.parse(details);
+            } catch (e) {
+                console.error('Failed to parse details JSON:', e);
+            }
+        }
+
         const price = parseFloat(req.body.price);
         const stock = parseInt(req.body.stock);
 
@@ -679,6 +689,7 @@ router.post('/products', auth, upload.any(), async (req, res) => {
                 images: imageGallery,
                 categoryId,
                 dietaryPreference: dietaryPreference || 'VEG',
+                details: details || [],
                 sellerId: seller.id,
                 sellerStoreName: seller.businessName
             }
@@ -1418,6 +1429,16 @@ router.put('/products/:id', auth, upload.any(), async (req, res) => {
 
         const { id } = req.params;
         const { name, description, categoryId, dietaryPreference } = req.body;
+        let details = req.body.details;
+
+        if (details && typeof details === 'string') {
+            try {
+                details = JSON.parse(details);
+            } catch (e) {
+                console.error('Failed to parse details JSON:', e);
+            }
+        }
+
         const price = req.body.price !== undefined ? parseFloat(req.body.price) : undefined;
         const stock = req.body.stock !== undefined ? parseInt(req.body.stock) : undefined;
 
@@ -1483,7 +1504,8 @@ router.put('/products/:id', auth, upload.any(), async (req, res) => {
                 image: mainImage,
                 images: newImageGallery,
                 categoryId: categoryId !== undefined ? categoryId : product.categoryId,
-                dietaryPreference: dietaryPreference !== undefined ? dietaryPreference : product.dietaryPreference
+                dietaryPreference: dietaryPreference !== undefined ? dietaryPreference : product.dietaryPreference,
+                details: details !== undefined ? details : product.details
             }
         });
 
