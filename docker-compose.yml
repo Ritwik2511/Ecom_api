@@ -6,12 +6,12 @@ services:
     container_name: ecom_backend
     restart: always
     ports:
-      - "3000:3000"
+      - "4000:4000"
     env_file:
       - .env
     environment:
       - NODE_ENV=development # Change to production for live deployment
-      - PORT=3000
+      - PORT=4000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ecom}?schema=public
     depends_on:
       db:

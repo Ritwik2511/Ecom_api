@@ -11,11 +11,11 @@ if (result.error && process.env.NODE_ENV !== 'production') {
 
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    PORT: z.string().default('3000').transform(Number),
+    PORT: z.string().default('4000').transform(Number),
     DATABASE_URL: z.string().url(),
     JWT_SECRET: z.string().min(10),
     LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']).default('info'),
-    API_BASE_URL: z.string().url().default('http://localhost:3000'),
+    API_BASE_URL: z.string().url().default('http://localhost:4000/api'),
     CORS_ORIGIN: z.string().default('*'),
 });
 
