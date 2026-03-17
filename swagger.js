@@ -1,5 +1,6 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const config = require('./config/config');
 
 const options = {
     definition: {
@@ -11,8 +12,8 @@ const options = {
         },
         servers: [
             {
-                url: 'http://localhost:3000/api',
-                description: 'Local server',
+                url: `${config.apiBaseUrl}/api`,
+                description: 'Production server',
             },
         ],
         components: {

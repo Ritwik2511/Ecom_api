@@ -15,6 +15,8 @@ const envSchema = z.object({
     DATABASE_URL: z.string().url(),
     JWT_SECRET: z.string().min(10),
     LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']).default('info'),
+    API_BASE_URL: z.string().url().default('http://localhost:3000'),
+    CORS_ORIGIN: z.string().default('*'),
 });
 
 const envVars = envSchema.safeParse(process.env);
@@ -30,4 +32,6 @@ module.exports = {
     databaseUrl: envVars.data.DATABASE_URL,
     jwtSecret: envVars.data.JWT_SECRET,
     logLevel: envVars.data.LOG_LEVEL,
+    apiBaseUrl: envVars.data.API_BASE_URL,
+    corsOrigin: envVars.data.CORS_ORIGIN,
 };

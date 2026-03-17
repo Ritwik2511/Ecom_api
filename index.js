@@ -20,7 +20,10 @@ const app = express();
 
 // Security Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: config.corsOrigin,
+    credentials: true
+}));
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -79,9 +82,9 @@ app.use(errorHandler);
 
 // Start server
 app.listen(config.port, () => {
-    logger.info(`🚀 Server is running on http://localhost:${config.port}`);
-    logger.info(`📊 Health check: http://localhost:${config.port}/health`);
-    logger.info(`Swagger Documentation: http://localhost:${config.port}/api-docs`);
+    logger.info(`🚀 Server is running on ${config.apiBaseUrl}`);
+    logger.info(`📊 Health check: ${config.apiBaseUrl}/health`);
+    logger.info(`Swagger Documentation: ${config.apiBaseUrl}/api-docs`);
 });
 
 // Graceful shutdown
